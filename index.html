@@ -170,7 +170,9 @@ button{cursor:pointer}
 .cd{display:inline-flex;align-items:baseline;gap:6px;min-height:38px;padding:6px 11px;border-radius:999px;border:1px solid #33509E;background:rgba(3,10,40,.7);color:#fff;
   font-family:var(--f-label);font-weight:700;font-size:calc(14px*var(--fs));letter-spacing:.04em}
 .cd b{font-family:var(--f-display);font-style:italic;font-weight:900;font-stretch:125%;color:var(--gold);font-size:1.1em;font-variant-numeric:tabular-nums}
-.sync{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-label);font-weight:700;font-size:calc(13px*var(--fs));color:var(--txt-2);letter-spacing:.04em;padding:0 4px}
+.sync{display:inline-flex;align-items:center;gap:6px;min-height:38px;border:0;border-radius:999px;background:transparent;font-family:var(--f-label);font-weight:700;font-size:calc(13px*var(--fs));color:var(--txt-2);letter-spacing:.04em;padding:0 8px}
+.sync:hover{background:rgba(255,255,255,.06)}
+.sync[data-acc="none"]{border:1px solid var(--gold);color:var(--gold);padding:0 12px}
 .sync i{width:9px;height:9px;border-radius:50%;background:#7A88B8;box-shadow:0 0 0 3px rgba(122,136,184,.18)}
 .sync[data-s="cloud"] i{background:#19D27A;box-shadow:0 0 10px #19D27A}
 .sync[data-s="saving"] i{background:var(--gold);box-shadow:0 0 10px var(--gold)}
@@ -601,7 +603,7 @@ summary::-webkit-details-marker{display:none}
         <div class="wk"><strong id="wkLabel"></strong><small id="wkTag"></small></div>
         <button type="button" class="icon-btn" id="nextW" aria-label="Sonraki hafta"></button>
         <button type="button" class="btn sm ghost" id="todayW">Bugün</button>
-        <span class="sync" id="sync" data-s="local" title="Kayıt durumu"><i></i><span id="syncT">Bu cihazda</span></span>
+        <button type="button" class="sync" id="sync" data-s="local" title="Kayıt durumu"><i></i><span id="syncT">Bu cihazda</span></button>
       </div>
       <div class="cds" id="cds"></div>
       <div class="grp">
@@ -786,6 +788,14 @@ summary::-webkit-details-marker{display:none}
       <div class="ph"><h2 id="cfTitle"></h2></div>
       <div class="pb"><p id="cfText" style="margin:0;font-size:calc(17px*var(--fs))"></p></div>
       <div class="pf"><button type="button" class="btn ghost" id="cfNo">Vazgeç</button><button type="button" class="btn red" id="cfYes">Evet</button></div>
+    </div>
+  </div>
+
+  <!-- Hesap ve eşitleme (Vercel sürümü) -->
+  <div class="ov" id="ov-acc" hidden role="dialog" aria-modal="true" aria-labelledby="acTitle">
+    <div class="panel" style="width:min(500px,100%)">
+      <div class="ph"><h2 id="acTitle">HESAP VE EŞİTLEME</h2><button type="button" class="icon-btn" data-close aria-label="Kapat"></button></div>
+      <div class="pb" id="acBody"></div>
     </div>
   </div>
 
@@ -975,7 +985,7 @@ function touch(key) {
   const now = Date.now();
   if (key === 'meta') S.meta.updatedAt = now; else if (S.weeks[key]) S.weeks[key].updatedAt = now;
   deleted.delete(key);
-  saveLocal(); dirty.add(key); scheduleFlush();
+  saveLocal(); dirty.add(key); scheduleFlush(); accOnTouch();
 }
 function scheduleFlush() { clearTimeout(flushTimer); flushTimer = setTimeout(flush, 700); }
 async function flush() {
@@ -1009,8 +1019,11 @@ async function flush() {
 function setSync(s) {
   const el = $('#sync'); if (!el) return;
   el.dataset.s = s;
-  $('#syncT').textContent = { local: 'Bu cihazda', cloud: 'Bulutta', saving: 'Kaydediliyor…', err: 'Bulut yanıt vermiyor' }[s] || '';
-  el.title = { local: 'Veriler bu tarayıcıda saklanıyor', cloud: 'Tablet, telefon ve bilgisayarında aynı program', saving: 'Değişiklikler buluta yazılıyor', err: 'Değişiklikler bu cihazda duruyor, bağlantı gelince yazılır' }[s] || '';
+  const sa = typeof STANDALONE !== 'undefined' && STANDALONE;
+  const noAcc = sa && !ACC.key;
+  el.dataset.acc = noAcc ? 'none' : 'yes';
+  $('#syncT').textContent = noAcc ? 'Giriş yap · eşitle' : sa ? ({ local: 'Bu cihazda', cloud: 'Eşitlendi', saving: 'Eşitleniyor…', err: 'Bağlantı bekleniyor' }[s] || '') : ({ local: 'Bu cihazda', cloud: 'Bulutta', saving: 'Kaydediliyor…', err: 'Bulut yanıt vermiyor' }[s] || '');
+  el.title = noAcc ? 'E-posta ve şifreyle giriş yap, programın tüm cihazlarında aynı kalsın' : ({ local: 'Veriler bu tarayıcıda saklanıyor', cloud: 'Tablet, telefon ve bilgisayarında aynı program', saving: 'Değişiklikler buluta yazılıyor', err: 'Değişiklikler bu cihazda duruyor, bağlantı gelince yazılır' }[s] || '');
 }
 function weekHasContent(w) { return !!w && (Object.keys(w.cells || {}).length > 0 || Object.keys(w.sessions || {}).length > 0 || w.goals.some(g => g.t.trim()) || w.stars > 0 || (w.review || '').trim()); }
 
@@ -1059,7 +1072,154 @@ function onCloud(snap) {
 }
 async function removeWeek(key) {
   delete S.weeks[key]; dirty.delete(key); lastWritten.delete(key); deleted.add(key); saveLocal();
+  TOMB[key] = Date.now(); tombSave(); accOnTouch();
   if (cloud.coll) { try { await cloud.coll.doc(key).delete(); } catch (e) {} }
+}
+
+/* ================= e-posta hesabıyla eşitleme (Vercel sürümü) =================
+   Claude dışında açıldığında devreye girer. E-posta + şifreden bir hesap anahtarı türetilir (SHA-256);
+   şifre hiçbir yere gönderilmez. Kayıt, sunucudaki /api/sync üzerinden Upstash Redis'te tutulur.
+   Birleştirme hafta hafta yapılır: her hafta ve ayarlar kendi updatedAt'ine göre en yeni hâliyle kalır,
+   silinen haftalar mezar taşıyla (tomb) işaretlenir ki öbür cihazdan geri gelmesin. */
+const STANDALONE = !window.claude;
+const LS_ACC = 'simsekfc:acc', LS_TOMB = 'simsekfc:tomb';
+const ACC = { key: null, mail: '', t: 0, last: 0, busy: false, again: false, dirty: false, state: 'off', timer: null, err: '' };
+let TOMB = {};
+try { const o = JSON.parse(localStorage.getItem(LS_ACC) || 'null'); if (o && /^[a-f0-9]{40}$/.test(o.key || '')) Object.assign(ACC, { key: o.key, mail: o.mail || '', t: +o.t || 0, last: +o.last || 0 }); } catch (e) {}
+try { const o = JSON.parse(localStorage.getItem(LS_TOMB) || '{}'); if (o && typeof o === 'object') TOMB = o; } catch (e) {}
+const accSave = () => { try { if (ACC.key) localStorage.setItem(LS_ACC, JSON.stringify({ key: ACC.key, mail: ACC.mail, t: ACC.t, last: ACC.last })); else localStorage.removeItem(LS_ACC); } catch (e) {} };
+const tombSave = () => { try { const lim = Date.now() - 400 * 864e5; for (const k in TOMB) if (TOMB[k] < lim) delete TOMB[k]; localStorage.setItem(LS_TOMB, JSON.stringify(TOMB)); } catch (e) {} };
+async function accHash(mail, pw) {
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('simsekfc|' + mail.trim().toLocaleLowerCase('tr-TR') + '|' + pw));
+  return Array.from(new Uint8Array(b), x => x.toString(16).padStart(2, '0')).join('').slice(0, 40);
+}
+async function accApi(q, opt) {
+  const r = await fetch('/api/sync' + q, { cache: 'no-store', ...(opt || {}) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(j.hata || String(r.status)); e.status = r.status; e.j = j; throw e; }
+  return j;
+}
+const accPayload = () => JSON.stringify({ app: 'simsek-fc', meta: S.meta, weeks: S.weeks, tomb: TOMB });
+function accMerge(R) {
+  let changed = false, localNewer = false;
+  const rt = (R && R.tomb && typeof R.tomb === 'object') ? R.tomb : {};
+  for (const k in rt) if (!((TOMB[k] || 0) >= rt[k])) { TOMB[k] = +rt[k] || 0; }
+  for (const k in TOMB) if (!((rt[k] || 0) >= TOMB[k])) localNewer = true;
+  const rm = R && R.meta, lu = S.meta.updatedAt || 0, ru = rm ? (rm.updatedAt || 0) : -1;
+  if (rm && (ACC.fresh || ru > lu)) { if (JSON.stringify(rm) !== JSON.stringify(S.meta)) { S.meta = mergeMeta(rm); changed = true; } } else if (lu > ru) localNewer = true;
+  ACC.fresh = false;
+  const rw = (R && R.weeks && typeof R.weeks === 'object') ? R.weeks : {};
+  for (const k of new Set([...Object.keys(S.weeks), ...Object.keys(rw)])) {
+    if (!/^w_\d{4}-\d{2}-\d{2}$/.test(k)) continue;
+    const L = S.weeks[k], W = rw[k]; const lt = L ? (L.updatedAt || 0) : -1, wt = W ? (W.updatedAt || 0) : -1; const tb = TOMB[k] || 0;
+    if (tb && Math.max(lt, wt) <= tb) { if (L) { delete S.weeks[k]; changed = true; } if (W) localNewer = true; continue; }
+    if (wt > lt) { S.weeks[k] = normWeek(W); changed = true; } else if (lt > wt) localNewer = true;
+  }
+  tombSave();
+  return { changed, localNewer };
+}
+function accApplyRemote() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (e) {}
+  applyPrefs(); renderAll();
+  if (!$('#ov-ed').hidden && ED) { ED.val = getCell(getWeek(ED.wk, false), ED.day, ED.slot); buildEditor(); }
+}
+function accSet(s, err) {
+  ACC.state = s; ACC.err = err || '';
+  setSync({ off: 'local', ok: 'cloud', saving: 'saving', err: 'err', nostore: 'err' }[s] || 'local');
+  if (!$('#ov-acc').hidden) renderAcc();
+}
+function accSchedule(ms = 2500) { if (!ACC.key) return; clearTimeout(ACC.timer); ACC.timer = setTimeout(accSync, ms); }
+async function accSync() {
+  if (!ACC.key) return;
+  if (ACC.busy) { ACC.again = true; return; }
+  ACC.busy = true; clearTimeout(ACC.timer); accSet('saving');
+  try {
+    for (let n = 0; n < 3; n++) {
+      const m = await accApi('?k=' + ACC.key + '&meta=1');
+      let localNewer = ACC.dirty || !m.t;
+      if (m.t && m.t !== ACC.t) {
+        const j = await accApi('?k=' + ACC.key);
+        if (j.v) { const r = accMerge(JSON.parse(j.v)); if (r.changed) accApplyRemote(); localNewer = localNewer || r.localNewer; }
+        ACC.t = j.t || m.t;
+      }
+      if (!localNewer) { ACC.last = Date.now(); accSave(); accSet('ok'); return; }
+      const t = Math.max(Date.now(), ACC.t + 1); const dirtyBefore = ACC.dirty; ACC.dirty = false;
+      try {
+        await accApi('', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ k: ACC.key, t, base: ACC.t, v: accPayload() }) });
+        ACC.t = t; ACC.last = Date.now(); accSave(); accSet('ok'); return;
+      } catch (e) { ACC.dirty = ACC.dirty || dirtyBefore || true; if (e.status !== 409) throw e; ACC.t = -1; }
+    }
+    accSet('err', 'Öbür cihazla aynı anda yazıldı. Birazdan yeniden denenecek.'); accSchedule(15000);
+  } catch (e) {
+    if (e.status === 503) accSet('nostore', 'Sunucuda eşitleme deposu bağlı değil. Vercel\'de projenin Storage sekmesinden Upstash Redis bağla, sonra yeniden yayınla.');
+    else if (e.status === 404) accSet('nostore', 'Eşitleme sunucusu bulunamadı. Uygulamayı Vercel adresinden açtığından emin ol.');
+    else { accSet('err', 'İnternet yok ya da sunucu yanıt vermedi. Değişiklikler bu cihazda duruyor, bağlantı gelince gönderilir.'); }
+  } finally {
+    ACC.busy = false;
+    if (ACC.again) { ACC.again = false; accSchedule(800); }
+  }
+}
+function accOnTouch() { if (!STANDALONE || !ACC.key) return; ACC.dirty = true; accSchedule(); }
+async function accLogin(mail, pw) {
+  const key = await accHash(mail, pw);
+  Object.assign(ACC, { key, mail: mail.trim(), t: 0, last: 0, dirty: false, fresh: true }); accSave();
+  await accSync();
+  if (ACC.state === 'nostore' || (ACC.state === 'err' && !ACC.last)) { const msg = ACC.err; accLogout(true); throw new Error(msg); }
+}
+function accLogout(silent) {
+  clearTimeout(ACC.timer); Object.assign(ACC, { key: null, mail: '', t: 0, last: 0, dirty: false }); accSave(); accSet('off');
+  if (!silent) toast('Hesaptan çıkıldı. Program bu cihazda kaldı.');
+}
+function renderAcc() {
+  $('#acTitle').innerHTML = `${ic('upload')}HESAP VE EŞİTLEME`;
+  const last = ACC.last ? new Date(ACC.last) : null;
+  const status = { ok: `Eşitlendi${last ? ' · ' + hm(last) : ''}`, saving: 'Eşitleniyor…', err: 'Bağlantı bekleniyor', nostore: 'Bulut kurulmamış', off: 'Eşitleme kapalı' }[ACC.state] || '';
+  $('#acBody').innerHTML = ACC.key ? `
+    <p style="margin:0;font-size:calc(17px*var(--fs))"><b>${esc(ACC.mail)}</b> ile giriş yapıldı.</p>
+    <p class="hint">Durum: ${esc(status)}. Tahtadaki her değişiklik birkaç saniye içinde buluta gider; öbür cihazında uygulamayı açtığında ya da ona geri döndüğünde kendiliğinden gelir.</p>
+    ${ACC.err ? `<p class="hint" style="color:#FF8DA4">${esc(ACC.err)}</p>` : ''}
+    <div class="addrow" style="flex-wrap:wrap"><button type="button" class="btn gold" id="acNow">${ic('upload')}Şimdi eşitle</button><button type="button" class="btn ghost" id="acOut">Çıkış yap</button></div>`
+  : `
+    <p style="margin:0;font-size:calc(16px*var(--fs))">Tablette, telefonda ve bilgisayarda aynı e-posta ve şifreyle giriş yap; programın her cihazda aynı kalır. İlk girişte hesap kendiliğinden açılır.</p>
+    <form id="acForm" style="margin-top:14px">
+      <label class="lbl" for="acMail">E-posta</label><input type="text" inputmode="email" id="acMail" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="ornek@gmail.com">
+      <label class="lbl" for="acPw">Şifre <small>en az 6 karakter</small></label><input type="password" id="acPw" autocomplete="current-password" style="width:100%;border:1.5px solid #2A4AA8;border-radius:11px;background:#081649;color:#fff;padding:11px 12px;font-size:calc(17px*var(--fs))">
+      <p class="hint" id="acErr" style="color:#FF8DA4" hidden></p>
+      <div class="addrow"><button type="submit" class="btn gold" id="acGo" style="flex:1">${ic('check')}Giriş yap</button></div>
+    </form>
+    <p class="hint">E-posta adresine mesaj gönderilmez; yalnızca hesabının adıdır. Şifre bu cihazdan çıkmaz, ondan yalnızca bir anahtar üretilir. Bu yüzden şifreyi unutursan buluttaki kayda ulaşılamaz; bir yere not et.</p>
+    <p class="hint">Giriş yaptığında bu cihazdaki program buluttakiyle birleşir: her hafta için hangi cihazdaki daha yeniyse o kalır.</p>`;
+}
+function wireAcc() {
+  if (!STANDALONE) { $('#sync').addEventListener('click', () => toast(cloud.coll ? 'Programın Claude hesabında bulutta; tüm cihazlarında aynı.' : 'Program bu tarayıcıda saklanıyor.')); return; }
+  $('#sync').addEventListener('click', () => { renderAcc(); openOv('ov-acc'); });
+  $('#acBody').addEventListener('click', e => {
+    if (e.target.closest('#acNow')) { ACC.dirty = true; accSync(); }
+    if (e.target.closest('#acOut')) { accLogout(); renderAcc(); }
+  });
+  $('#acBody').addEventListener('submit', async e => {
+    e.preventDefault();
+    const mail = $('#acMail').value.trim(), pw = $('#acPw').value, er = $('#acErr');
+    const fail = m => { er.textContent = m; er.hidden = false; };
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return fail('Geçerli bir e-posta adresi yaz.');
+    if (pw.length < 6) return fail('Şifre en az 6 karakter olmalı.');
+    if (!(window.crypto && crypto.subtle)) return fail('Bu tarayıcı güvenli bağlantı olmadan giriş yapamıyor. Uygulamayı https ile başlayan Vercel adresinden aç.');
+    const go = $('#acGo'); go.disabled = true; go.textContent = 'Bağlanıyor…';
+    try { await accLogin(mail, pw); renderAcc(); toast('Giriş yapıldı. Program eşitlendi.'); celebrate('BAĞLANDI!'); }
+    catch (err) { go.disabled = false; go.innerHTML = `${ic('check')}Giriş yap`; fail(err.message || 'Bağlanılamadı. İnternetini kontrol edip yeniden dene.'); }
+  });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && ACC.key) accSync(); });
+  addEventListener('online', () => { if (ACC.key) accSync(); });
+  addEventListener('pagehide', () => {
+    if (!ACC.key || !ACC.dirty) return;
+    try { const t = Math.max(Date.now(), ACC.t + 1); fetch('/api/sync', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ k: ACC.key, t, base: ACC.t, v: accPayload() }) }); } catch (e) {}
+  });
+  setInterval(async () => {
+    if (!ACC.key || document.hidden || ACC.busy) return;
+    try { const m = await accApi('?k=' + ACC.key + '&meta=1'); if (m.t && m.t !== ACC.t) accSync(); } catch (e) {}
+  }, 45000);
+  setSync(ACC.key ? 'saving' : 'local');
+  if (ACC.key) accSync();
 }
 
 /* ================= hücre verisi ================= */
@@ -1866,7 +2026,7 @@ function renderSettings() {
     <div class="set-sec"><h3>Kendi sözlerin</h3>
       <label class="sr" for="stQuotes">Kendi motivasyon sözlerin</label><textarea id="stQuotes" rows="3" placeholder="Her satıra bir söz. Söz kartında hazır sözlerin önünde döner.">${esc(m.quotes)}</textarea></div>
     <div class="set-sec"><h3>Veri</h3>
-      <p class="hint" style="margin-top:0">${cloud.coll ? 'Programın bulutta: bu sayfayı tabletten, telefondan ya da bilgisayardan açtığında aynı tahtayı görürsün. Sayfayı biriyle paylaşırsan onun programı ayrı tutulur, seninkini göremez.' : 'Programın şu an bu tarayıcıda saklanıyor. Güvence için arada bir yedek indir.'}</p>
+      <p class="hint" style="margin-top:0">${cloud.coll ? 'Programın bulutta: bu sayfayı tabletten, telefondan ya da bilgisayardan açtığında aynı tahtayı görürsün. Sayfayı biriyle paylaşırsan onun programı ayrı tutulur, seninkini göremez.' : (STANDALONE && ACC.key ? `Programın ${esc(ACC.mail)} hesabıyla bütün cihazlarında eşitleniyor.` : STANDALONE ? 'Programın şu an yalnızca bu tarayıcıda. Üst şeritteki "Giriş yap · eşitle" ile e-posta ve şifreyle giriş yaparsan bütün cihazlarında aynı kalır.' : 'Programın şu an bu tarayıcıda saklanıyor. Güvence için arada bir yedek indir.')}</p>
       <div class="addrow" style="flex-wrap:wrap"><button type="button" class="btn sm" id="stExport">${ic('download')}Yedeği indir</button><button type="button" class="btn sm" id="stImport">${ic('upload')}Yedek yükle</button><button type="button" class="btn sm red" id="stReset">${ic('trash')}Her şeyi sıfırla</button></div></div>`;
 }
 function wireSettings() {
@@ -2064,7 +2224,7 @@ setInterval(() => {
   }
 }, 500);
 document.addEventListener('visibilitychange', () => { if (!document.hidden && TM.runStart && (TM.phase === 'play' || TM.phase === 'break')) lockOn(); });
-initCloud(); initSample();
+wireAcc(); initCloud(); initSample();
 })();
 </script>
 

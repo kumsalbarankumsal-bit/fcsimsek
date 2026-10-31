@@ -1,5 +1,6 @@
-/* Şimşek FC çevrimdışı önbelleği: sayfa ağdan gelir, ağ yoksa önbellekteki kopya açılır. */
-const CACHE = 'simsek-fc-v2';
+/* Şimşek FC çevrimdışı önbelleği: sayfa ağdan gelir, ağ yoksa önbellekteki kopya açılır.
+   /api/ istekleri hiç önbelleğe alınmaz; eşitleme her zaman canlı sunucuyla konuşur. */
+const CACHE = 'simsek-fc-v3';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {
@@ -7,8 +8,10 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   const req = e.request; if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  if (url.origin === location.origin && url.pathname.startsWith('/api/')) return;
   e.respondWith(fetch(req).then(res => {
-    if (res && res.ok && (new URL(req.url).origin === location.origin || /fonts\.(googleapis|gstatic)\.com|cdnjs\.cloudflare\.com/.test(req.url))) {
+    if (res && res.ok && (url.origin === location.origin || /fonts\.(googleapis|gstatic)\.com|cdnjs\.cloudflare\.com/.test(req.url))) {
       const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy));
     }
     return res;
