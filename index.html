@@ -1,0 +1,2077 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#020A2A">
+<meta name="description" content="Şimşek FC haftalık ders çalışma programı">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>:root{color-scheme:dark;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Şimşek FC Planlayıcı</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@1,125,800;1,125,900&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bangers&family=Barlow+Condensed:wght@600;700;800&family=Patrick+Hand&display=swap">
+<style>
+/* Yerleşim: stadyum gecesi. Ortada parlak taktik tahtası, köşelerde bantlı kraft notlar, sağda soyunma odası panosu, en altta çim. */
+:root{
+  color-scheme: dark;
+  --oled:#00020A;            /* OLED siyahı: piksel kapalı */
+  --night:#020A26;
+  --navy:#06206B;
+  --royal:#1450FF;
+  --gold:#FFD21F;
+  --red:#FF2D55;
+  --grass:#16B852;
+  --txt:#EEF3FF;
+  --txt-2:#A9BAE8;
+  --panel:#06123A;
+  --panel-2:#0A1C55;
+  --edge:#2448B8;
+  --kraft-ink:#2A2213;
+  --note-y:#FFE53B;
+  --plan:#5C8DFF;  --done:#D87000;   /* grafik serileri (doğrulandı) */
+  --board:#F7F9FF; --board-2:#EAF0FF; --ink:#0A1638; --ink-2:#3B4B78; --ink-3:#8494C2; --line:#C9D4F0;
+  --today-bg:#FFF6CC; --today-line:#FFC400; --ok:#0F9F4A; --lab-a:#0F3DB5; --lab-b:#082A84; --head-bg:#FFFFFF;
+  --f-display:"Archivo","Arial Black",Impact,sans-serif;
+  --f-marker:"Bangers",Impact,"Arial Black",sans-serif;
+  --f-label:"Barlow Condensed","Arial Narrow","Roboto Condensed",sans-serif;
+  --f-read:"Atkinson Hyperlegible",Verdana,"Segoe UI",sans-serif;
+  --f-hand:"Patrick Hand","Comic Sans MS","Segoe Print",cursive;
+  --fs:1;
+  --side-w:clamp(272px,22vw,340px);
+  --lab-w:clamp(92px,8.6vw,136px);
+}
+#app[data-board="night"]{
+  --board:#050E30; --board-2:#0B1948; --ink:#EEF3FF; --ink-2:#B4C3EE; --ink-3:#5D72B4; --line:#1C3277;
+  --today-bg:#141E4C; --today-line:#FFD21F; --ok:#19D27A; --lab-a:#0B2C88; --lab-b:#061C5E; --head-bg:#071444;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{background:var(--oled)}
+body{color:var(--txt);font-family:var(--f-read);font-size:15px;line-height:1.45;margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0;overflow-x:hidden}
+#app{position:relative;font-size:calc(15px*var(--fs))}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px;border-radius:6px}
+.ic{width:1.15em;height:1.15em;flex:none;display:inline-block;vertical-align:-.2em}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- Hareketli arka plan ---------- */
+.bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;
+  background:radial-gradient(120% 85% at 50% -12%,#0D35B0 0%,#051B62 26%,#020A2B 56%,var(--oled) 100%)}
+.bg::after{content:"";position:absolute;inset:0;background:radial-gradient(70% 38% at 50% 112%,rgba(22,184,82,.28),transparent 70%)}
+.beam{position:absolute;top:-6%;width:46vmax;height:135vh;transform-origin:50% 0;mix-blend-mode:screen;will-change:transform;
+  background:linear-gradient(180deg,rgba(150,195,255,.34) 0%,rgba(110,160,255,.10) 46%,transparent 76%);
+  clip-path:polygon(46% 0,54% 0,100% 100%,0 100%)}
+.beam.l{left:-12vmax;animation:swL 16s ease-in-out infinite alternate}
+.beam.r{right:-12vmax;animation:swR 19s ease-in-out infinite alternate}
+.beam.g{left:28%;opacity:.7;background:linear-gradient(180deg,rgba(255,210,31,.18),transparent 70%);animation:swG 23s ease-in-out infinite alternate}
+@keyframes swL{from{transform:rotate(-36deg)}to{transform:rotate(-12deg)}}
+@keyframes swR{from{transform:rotate(36deg)}to{transform:rotate(12deg)}}
+@keyframes swG{from{transform:rotate(-12deg)}to{transform:rotate(14deg)}}
+.lamps{position:absolute;top:10px;width:150px;height:46px;border-radius:6px;
+  background:radial-gradient(circle,#fff 0 2.6px,rgba(190,215,255,.85) 3.6px,transparent 8px) 0 0/25px 23px;
+  filter:drop-shadow(0 0 14px rgba(170,205,255,.9));animation:flick 5s ease-in-out infinite}
+.lamps.l{left:3%;transform:rotate(-10deg)} .lamps.r{right:3%;transform:rotate(10deg);animation-delay:-2.3s}
+@keyframes flick{0%,100%{opacity:.95}45%{opacity:.78}50%{opacity:1}}
+.pitchlines{position:absolute;inset:0;width:100%;height:100%}
+.run{stroke-dasharray:14 16;animation:march 2.8s linear infinite}
+.run.b{animation-duration:3.4s}.run.c{animation-duration:4.1s}
+@keyframes march{to{stroke-dashoffset:-60}}
+#fx{position:absolute;inset:0;width:100%;height:100%}
+#fxTop{position:fixed;inset:0;width:100%;height:100%;z-index:90;pointer-events:none}
+#app[data-motion="off"] *, #app[data-motion="off"] *::before, #app[data-motion="off"] *::after{animation:none!important;transition:none!important}
+
+/* ---------- Sahne ---------- */
+.stage{position:relative;z-index:1;max-width:1640px;margin:0 auto;padding-block:14px 0}
+
+/* ---------- Üst bölüm ---------- */
+.hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.86fr) minmax(0,2.7fr) minmax(0,.8fr) minmax(0,1.05fr);
+  grid-template-areas:"nl sb tb cr nr";align-items:center;gap:clamp(10px,1.4vw,22px);padding-top:8px}
+.nl{grid-area:nl;position:relative;padding:4px 6px 30px 14px}
+.nr{grid-area:nr;padding:4px 14px 10px 6px}
+.kraft{position:relative;background:linear-gradient(165deg,#F7EBCF 0%,#E7D3A6 100%);color:var(--kraft-ink);font-family:var(--f-hand);
+  font-size:calc(19px*var(--fs));line-height:1.15;text-align:center;text-transform:uppercase;padding:24px 16px 14px;border-radius:2px;
+  box-shadow:0 14px 28px rgba(0,0,0,.55),inset 0 0 36px rgba(150,110,40,.2)}
+.nl .kraft{transform:rotate(-3.5deg)} .nr .kraft{transform:rotate(3deg)}
+.kraft .doodle{display:block;margin:6px auto 0;width:30px;height:30px;color:#0B2E8A}
+.nr .kraft .doodle{color:var(--red)}
+.ne{outline:none;min-height:1.2em;cursor:text;border-radius:4px;overflow-wrap:anywhere}
+.ne:focus{box-shadow:0 0 0 2px rgba(11,46,138,.55)}
+.ne:empty::before{content:attr(data-ph);opacity:.45}
+.sticky{position:absolute;right:-4px;bottom:0;width:56%;background:var(--note-y);color:#2B2300;font-family:var(--f-hand);
+  font-size:calc(21px*var(--fs));line-height:1.1;padding:12px 10px 10px;text-align:center;transform:rotate(-7deg);box-shadow:0 10px 20px rgba(0,0,0,.5);z-index:2}
+.tape{position:absolute;width:72px;height:21px;background:rgba(214,206,184,.82);box-shadow:0 1px 3px rgba(0,0,0,.25);z-index:3;pointer-events:none}
+.tape.tl{top:-9px;left:-18px;transform:rotate(-30deg)} .tape.tr{top:-9px;right:-18px;transform:rotate(30deg)}
+.tape.red{background:rgba(255,45,85,.9)} .tape.sm{width:46px;height:16px;top:-8px;left:30%;transform:rotate(-4deg)}
+
+.scoreboard{grid-area:sb;display:block;width:100%;border:2px solid #2B4FC8;border-radius:16px;padding:12px 10px 10px;text-align:center;color:#fff;
+  background:linear-gradient(180deg,#0C1E58,#020818);box-shadow:inset 0 0 0 1px rgba(255,255,255,.06),0 0 32px rgba(20,80,255,.38),0 14px 28px rgba(0,0,0,.5)}
+.scoreboard:hover{border-color:var(--gold)}
+.sb-top{font-family:var(--f-label);font-weight:800;letter-spacing:.14em;font-size:calc(12px*var(--fs));color:var(--txt-2)}
+.sb-score{display:flex;justify-content:center;align-items:baseline;gap:.3em;font-family:var(--f-display);font-style:italic;font-weight:900;font-stretch:125%;
+  font-size:clamp(1.9rem,3.1vw,2.9rem);line-height:1.05;font-variant-numeric:tabular-nums;margin:2px 0}
+.sb-score b{color:var(--gold);text-shadow:0 0 16px rgba(255,210,31,.6)}
+.sb-score i{color:#fff;font-size:.62em;opacity:.85}
+.sb-score span{color:#9FB6FF;text-shadow:0 0 12px rgba(92,141,255,.55)}
+.sb-lbl{font-family:var(--f-label);font-weight:700;letter-spacing:.06em;font-size:calc(12px*var(--fs));color:var(--txt-2)}
+.sb-bar{height:7px;border-radius:9px;background:#13245E;margin:7px 4px 8px;overflow:hidden}
+.sb-bar i{display:block;height:100%;width:0;border-radius:9px;background:linear-gradient(90deg,#FFB800,var(--gold));box-shadow:0 0 10px rgba(255,210,31,.8);transition:width .6s}
+.sb-meta{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:2px 6px;font-family:var(--f-label);font-weight:700;font-size:calc(13px*var(--fs));color:#fff;padding:0 4px}
+.sb-meta .streak{color:var(--gold);display:inline-flex;align-items:center;gap:3px}
+.sb-meta .clock{font-variant-numeric:tabular-nums;color:var(--txt-2)}
+
+.tb{grid-area:tb;text-align:center;min-width:0}
+.topq{display:flex;align-items:center;justify-content:center;gap:10px;font-family:var(--f-marker);letter-spacing:.06em;font-size:clamp(1rem,1.65vw,1.55rem);color:#fff;text-transform:uppercase;margin:0}
+.topq .ne{min-width:4em}
+.spark{width:clamp(22px,2.2vw,34px);height:clamp(22px,2.2vw,34px);color:var(--gold);flex:none}
+.spark.flip{transform:scaleX(-1)}
+.club{margin:.06em 0 0;font-family:var(--f-display);font-style:italic;font-weight:900;font-stretch:125%;font-size:clamp(2.5rem,6.2vw,6.4rem);line-height:1;
+  white-space:nowrap;text-transform:uppercase;letter-spacing:-.005em;overflow:hidden;padding:0 .1em .04em;
+  background:linear-gradient(100deg,#fff 0 42%,#FFF0A0 50%,#fff 58% 100%) 0 0/260% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:#fff;
+  filter:drop-shadow(0 5px 0 #031650) drop-shadow(0 0 22px rgba(40,110,255,.6));animation:shine 7s linear infinite}
+@keyframes shine{from{background-position:130% 0}to{background-position:-130% 0}}
+.subt{font-family:var(--f-marker);color:var(--gold);font-size:clamp(1.15rem,2.35vw,2.45rem);letter-spacing:.05em;line-height:1;margin:.12em 0 0;
+  text-shadow:0 3px 0 #5A3A00,0 0 18px rgba(255,210,31,.45);transform:rotate(-1.2deg)}
+.cr{grid-area:cr;display:grid;place-items:center}
+.crest-svg{width:min(100%,186px);height:auto;filter:drop-shadow(0 10px 24px rgba(0,0,0,.6));animation:floaty 6s ease-in-out infinite}
+.crest-bolt{animation:boltGlow 2.8s ease-in-out infinite}
+@keyframes boltGlow{0%,100%{filter:drop-shadow(0 0 3px rgba(255,210,31,.5))}50%{filter:drop-shadow(0 0 13px rgba(255,232,100,1))}}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+
+/* ---------- Kontrol şeridi ---------- */
+.strip{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:16px 0 14px;padding:8px 10px;border-radius:16px;
+  background:linear-gradient(90deg,rgba(9,28,86,.9),rgba(4,14,46,.9));border:1px solid #1F3E96;box-shadow:0 0 26px rgba(20,80,255,.25)}
+.grp{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:0 14px;border-radius:11px;border:1px solid #2E58DA;
+  background:#0D2A7A;color:#fff;font-family:var(--f-label);font-weight:800;font-size:calc(15px*var(--fs));letter-spacing:.05em;text-transform:uppercase;transition:transform .12s,background .15s,border-color .15s}
+.btn:hover{background:#13379C;border-color:#5B83FF}
+.btn:active{transform:scale(.97)}
+.btn.gold{background:linear-gradient(180deg,#FFE24D,#FFC000);border-color:#FFE680;color:#14130A;box-shadow:0 0 18px rgba(255,210,31,.45)}
+.btn.gold:hover{background:linear-gradient(180deg,#FFEA70,#FFCB1F)}
+.btn.red{background:#C4183F;border-color:#FF5C7E}
+.btn.ghost{background:transparent}
+.btn.sm{min-height:38px;padding:0 11px;font-size:calc(14px*var(--fs))}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.icon-btn{display:inline-grid;place-items:center;width:44px;height:44px;border-radius:11px;border:1px solid #2E58DA;background:#0D2A7A;color:#fff;padding:0}
+.icon-btn:hover{background:#13379C}
+.wk{display:flex;flex-direction:column;align-items:center;min-width:12.5em;line-height:1.1;text-align:center}
+.wk strong{font-family:var(--f-label);font-weight:800;font-size:calc(18px*var(--fs));letter-spacing:.03em}
+.wk small{font-family:var(--f-label);font-weight:700;letter-spacing:.12em;font-size:calc(12px*var(--fs));color:var(--gold)}
+.cds{display:flex;gap:6px;flex-wrap:wrap}
+.cd{display:inline-flex;align-items:baseline;gap:6px;min-height:38px;padding:6px 11px;border-radius:999px;border:1px solid #33509E;background:rgba(3,10,40,.7);color:#fff;
+  font-family:var(--f-label);font-weight:700;font-size:calc(14px*var(--fs));letter-spacing:.04em}
+.cd b{font-family:var(--f-display);font-style:italic;font-weight:900;font-stretch:125%;color:var(--gold);font-size:1.1em;font-variant-numeric:tabular-nums}
+.sync{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-label);font-weight:700;font-size:calc(13px*var(--fs));color:var(--txt-2);letter-spacing:.04em;padding:0 4px}
+.sync i{width:9px;height:9px;border-radius:50%;background:#7A88B8;box-shadow:0 0 0 3px rgba(122,136,184,.18)}
+.sync[data-s="cloud"] i{background:#19D27A;box-shadow:0 0 10px #19D27A}
+.sync[data-s="saving"] i{background:var(--gold);box-shadow:0 0 10px var(--gold)}
+.sync[data-s="err"] i{background:var(--red)}
+.tmpill{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid #FFE680;background:rgba(255,210,31,.14);color:var(--gold);
+  font-family:var(--f-label);font-weight:800;letter-spacing:.06em;font-size:calc(15px*var(--fs))}
+.tmpill b{font-variant-numeric:tabular-nums;color:#fff}
+.tmpill .live{width:9px;height:9px;border-radius:50%;background:var(--red);box-shadow:0 0 10px var(--red);animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+.menu-wrap{position:relative}
+.menu{position:absolute;right:0;top:calc(100% + 8px);z-index:40;min-width:270px;background:var(--panel);border:1px solid var(--edge);border-radius:14px;padding:6px;
+  box-shadow:0 20px 50px rgba(0,0,0,.6),0 0 30px rgba(20,80,255,.25)}
+.menu button{display:flex;width:100%;align-items:center;gap:10px;min-height:44px;padding:0 12px;border:0;border-radius:9px;background:transparent;color:#fff;text-align:left;font-size:calc(15px*var(--fs))}
+.menu button:hover{background:#10286F}
+.menu hr{border:0;border-top:1px solid #1E3477;margin:4px 6px}
+
+/* ---------- Saha: tahta + yan panel ---------- */
+.pitch{display:grid;grid-template-columns:minmax(0,1fr) var(--side-w);gap:16px;align-items:stretch}
+.board{display:flex;flex-direction:column;background:var(--board);border-radius:18px;padding:8px;box-shadow:0 0 0 2px rgba(255,255,255,.65),0 18px 50px rgba(0,0,0,.55),0 0 40px rgba(20,80,255,.25);color-scheme:light}
+#app[data-board="night"] .board{box-shadow:0 0 0 2px #2448B8,0 18px 50px rgba(0,0,0,.55),0 0 40px rgba(20,80,255,.35);color-scheme:dark}
+.grid{flex:1;display:grid;grid-template-columns:var(--lab-w) repeat(7,minmax(0,1fr));border:1.5px solid var(--line);border-radius:12px;overflow:hidden;background:var(--board)}
+.gh{display:flex;align-items:center;justify-content:center;gap:6px;min-height:calc(50px*var(--fs));padding:6px 4px;background:var(--head-bg);color:var(--ink);
+  border-left:1px solid var(--line);border-bottom:2px solid var(--line);font-family:var(--f-label);font-weight:800;text-transform:uppercase;letter-spacing:.03em;font-size:calc(14px*var(--fs));text-align:center;flex-wrap:wrap;line-height:1.05}
+.gh .ic{color:#0B2E8A;width:1.25em;height:1.25em}
+#app[data-board="night"] .gh .ic{color:var(--gold)}
+.gh .dd{flex-basis:100%;font-weight:700;font-size:.82em;color:var(--ink-2);letter-spacing:.06em}
+.gh .dt{flex-basis:100%;font-weight:800;font-size:.8em;color:var(--ok);letter-spacing:.03em;text-transform:none;font-variant-numeric:tabular-nums}
+.lab.slot{gap:2px;padding:6px 4px}
+.lab .sn{font-size:calc(11.5px*var(--fs));letter-spacing:.12em;color:#C9D7FF}
+.tin{width:100%;max-width:6.6em;min-height:30px;border:1px solid rgba(255,255,255,.3);border-radius:8px;background:rgba(0,8,40,.35);color:#fff;color-scheme:dark;
+  font-family:var(--f-label);font-weight:800;font-size:calc(16px*var(--fs));text-align:center;padding:1px 2px;font-variant-numeric:tabular-nums;cursor:pointer}
+.tin:hover{border-color:var(--gold)}
+.tin:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,210,31,.3)}
+.tin::-webkit-calendar-picker-indicator{display:none}
+.tin::-webkit-datetime-edit{padding:0}
+.lab .to{line-height:.7;opacity:.75}
+.lab .du{font-size:calc(11.5px*var(--fs));color:var(--gold);letter-spacing:.05em;text-transform:none}
+.lab.now{box-shadow:inset 0 0 0 3px var(--gold)}
+.slotbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;padding:8px 4px 2px;color:var(--ink-2);font-family:var(--f-label);font-weight:800;letter-spacing:.06em;font-size:calc(14px*var(--fs));text-transform:uppercase}
+.slotbar b{color:var(--ink);font-variant-numeric:tabular-nums}
+.sbtn{min-width:40px;min-height:38px;padding:0 12px;border-radius:10px;border:1.5px solid var(--line);background:var(--board-2);color:var(--ink);font-family:var(--f-label);font-weight:800;font-size:calc(17px*var(--fs));letter-spacing:.04em}
+.sbtn.wide{font-size:calc(14px*var(--fs));text-transform:uppercase}
+.sbtn:hover{border-color:#1450FF}
+.sbtn[disabled]{opacity:.4;pointer-events:none}
+.gh.corner{background:linear-gradient(180deg,#1450FF,#0B3BC2);color:#fff;border-left:0;letter-spacing:.12em}
+.gh.today{background:var(--today-bg);box-shadow:inset 0 -4px 0 var(--today-line)}
+.gh.today .dd::after{content:" · BUGÜN";color:#B07800}
+#app[data-board="night"] .gh.today .dd::after{color:var(--gold)}
+.lab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:10px 6px;text-align:center;color:#fff;
+  background:linear-gradient(180deg,var(--lab-a),var(--lab-b));border-bottom:1px solid rgba(255,255,255,.14);
+  font-family:var(--f-label);font-weight:800;letter-spacing:.05em;font-size:calc(13px*var(--fs));line-height:1.1;text-transform:uppercase}
+.lab .ic{width:1.9em;height:1.9em;stroke-width:1.7}
+.cell{position:relative;min-height:calc(86px*var(--fs));padding:8px 8px 7px;border-left:1px solid var(--line);border-bottom:1px solid var(--line);
+  background:var(--board);color:var(--ink);font-size:calc(13.5px*var(--fs));line-height:1.35;cursor:pointer;transition:background .15s;min-width:0;overflow-wrap:anywhere}
+.cell:hover{background:var(--board-2)}
+.cell.today{background:color-mix(in srgb,var(--today-bg) 70%,var(--board))}
+.cell.today:hover{background:var(--today-bg)}
+.cell.has{background:color-mix(in srgb,var(--c) 14%,var(--board));box-shadow:inset 4px 0 0 var(--c)}
+.cell.has:hover{background:color-mix(in srgb,var(--c) 22%,var(--board))}
+.cell.now{outline:3px solid var(--today-line);outline-offset:-3px;z-index:1}
+.cell .ctick{position:absolute;top:6px;right:6px}
+.cell .chips{padding-right:calc(26px*var(--fs))}
+.cell.done .clamp{color:var(--ink-2)}
+.cell.empty .add{position:absolute;inset:0;display:grid;place-items:center;color:var(--ink-3);opacity:.32;transition:opacity .15s}
+.cell.empty:hover .add,.cell.empty:focus-visible .add{opacity:.9}
+.cell .add .ic{width:22px;height:22px}
+.clamp{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px}
+.sc{display:inline-flex;align-items:center;gap:4px;padding:1px 7px 1px 5px;border-radius:999px;border:1.5px solid var(--c);
+  background:color-mix(in srgb,var(--c) 16%,var(--board));color:var(--ink);font-family:var(--f-label);font-weight:800;font-size:calc(12.5px*var(--fs));letter-spacing:.04em;line-height:1.35}
+.sc::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c);box-shadow:0 0 6px var(--c)}
+.todo{display:flex;align-items:center;gap:6px;padding:2px 0;line-height:1.25;min-width:0}
+.blk{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:6px;row-gap:1px;padding:2px 0;line-height:1.25;min-width:0}
+.blk .bm{grid-column:2;display:flex;align-items:center;gap:4px;min-width:0}
+.blk .tm{font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}
+.blk .sd{width:9px;height:9px;border-radius:50%;background:var(--c);flex:none;box-shadow:0 0 6px var(--c)}
+.blk .code{font-family:var(--f-label);font-weight:800;font-size:.92em;color:var(--ink-2)}
+.blk.done .tm,.todo.done span{color:var(--ink-3);text-decoration:line-through;text-decoration-thickness:2px}
+.blk.now .tm{color:#C25B00}
+#app[data-board="night"] .blk.now .tm{color:var(--gold)}
+.blk .tmr{width:.95em;height:.95em;color:var(--ink-3)}
+.tick{position:relative;flex:none;display:grid;place-items:center;width:calc(21px*var(--fs));height:calc(21px*var(--fs));padding:0;border-radius:6px;
+  border:2px solid var(--ink-3);background:transparent;color:transparent;transition:background .15s,border-color .15s,transform .12s}
+.tick::after{content:"";position:absolute;inset:-9px}
+.tick .ic{width:72%;height:72%;stroke-width:3}
+.tick[aria-pressed="true"]{background:var(--ok);border-color:var(--ok);color:#fff}
+.tick:active{transform:scale(.88)}
+.tick.big{width:34px;height:34px;border-radius:9px}
+.tot{margin-top:4px;font-family:var(--f-label);font-weight:800;font-size:calc(12.5px*var(--fs));color:var(--ink-2);letter-spacing:.04em}
+.tot b{color:var(--ok)}
+.rating{float:right;margin:0 0 4px 6px;min-width:2.3em;text-align:center;padding:1px 6px;border-radius:7px;font-family:var(--f-display);font-style:italic;font-weight:900;font-stretch:125%;
+  font-size:calc(13px*var(--fs));color:#fff;font-variant-numeric:tabular-nums}
+.rating.hi{background:#0F9F4A}.rating.mid{background:#C98700}.rating.lo{background:#D61F45}
+
+/* Telefon: gün görünümü */
+.dayview{display:none}
+.dtabs{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-bottom:8px}
+.dtab{display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;padding:4px 0;border-radius:10px;border:1.5px solid var(--line);background:var(--head-bg);color:var(--ink);
+  font-family:var(--f-label);font-weight:800;font-size:calc(13px*var(--fs));letter-spacing:.04em}
+.dtab small{font-weight:700;color:var(--ink-2)}
+.dtab.today{box-shadow:inset 0 -3px 0 var(--today-line)}
+.dtab[aria-selected="true"]{background:#1450FF;border-color:#1450FF;color:#fff}
+.dtab[aria-selected="true"] small{color:#DCE6FF}
+.dcol{border:1.5px solid var(--line);border-radius:12px;overflow:hidden}
+.drow{display:grid;grid-template-columns:98px minmax(0,1fr)}
+.drow .lab{min-height:calc(74px*var(--fs));padding:6px 3px}
+.drow .cell{font-size:calc(15px*var(--fs))}
+
+/* Yan panel */
+.side{display:flex;flex-direction:column;gap:14px}
+.card{background:var(--board);color:var(--ink);border-radius:16px;overflow:hidden;box-shadow:0 0 0 2px rgba(255,255,255,.5),0 14px 34px rgba(0,0,0,.5);color-scheme:light}
+#app[data-board="night"] .card{box-shadow:0 0 0 2px #2448B8,0 14px 34px rgba(0,0,0,.5);color-scheme:dark}
+.card-h{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 12px;font-family:var(--f-label);font-weight:800;letter-spacing:.08em;font-size:calc(15px*var(--fs));text-transform:uppercase}
+.card-h.red{background:linear-gradient(180deg,#FF3A5F,#D8143F);color:#fff}
+.card-h.yel{background:linear-gradient(180deg,#FFE24D,#FFC400);color:#1A1405}
+.card-h.blue{background:linear-gradient(180deg,#1A55FF,#0B3BC2);color:#fff}
+.gprog{height:6px;background:var(--board-2)}
+.gprog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#FF2D55,#FFD21F);transition:width .5s}
+.goals{list-style:none;margin:0;padding:6px 12px 10px}
+.goals li{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--line)}
+.goals li:last-child{border-bottom:0}
+.num{flex:none;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#E3173F;color:#fff;font-family:var(--f-label);font-weight:800;font-size:14px;box-shadow:0 0 0 2px rgba(227,23,63,.2)}
+.line-in{flex:1;min-width:0;border:0;border-bottom:1.5px dashed transparent;background:transparent;color:var(--ink);padding:6px 2px;font-size:calc(15px*var(--fs));outline:none}
+.line-in::placeholder{color:var(--ink-3)}
+.line-in:focus{border-bottom-color:var(--ink-3)}
+.goals li.done .line-in{text-decoration:line-through;color:var(--ink-3)}
+.side-row{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:12px}
+.unutma{list-style:none;margin:0;padding:6px 10px 8px}
+.unutma li{display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--line)}
+.unutma li:last-child{border-bottom:0}
+.unutma .ic{width:1.1em;height:1.1em}
+.unutma .line-in{font-family:var(--f-hand);font-size:calc(15px*var(--fs));text-transform:uppercase;padding:5px 0}
+.clubbox{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:14px 8px;border-radius:16px;text-align:center;overflow:hidden;
+  background:radial-gradient(120% 90% at 50% 0%,#1A4BEA 0%,#082A84 55%,#031650 100%);color:#fff;box-shadow:0 0 0 2px rgba(255,210,31,.35),0 14px 34px rgba(0,0,0,.55)}
+.clubbox .ic{width:34px;height:34px;color:var(--gold);fill:rgba(255,210,31,.25);filter:drop-shadow(0 0 8px rgba(255,210,31,.8));animation:boltGlow 2.8s ease-in-out infinite}
+.clubbox strong{font-family:var(--f-label);font-weight:800;font-size:calc(24px*var(--fs));letter-spacing:.04em;line-height:1;text-transform:uppercase;overflow-wrap:anywhere}
+.clubbox span{font-family:var(--f-label);font-weight:800;font-size:calc(19px*var(--fs));letter-spacing:.04em;color:var(--gold);line-height:1;text-shadow:0 0 12px rgba(255,210,31,.5)}
+.clubbox::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.18) 50%,transparent 65%) 0 0/250% 100%;animation:shine 6s linear infinite}
+.stars{display:flex;justify-content:center;gap:clamp(6px,1vw,12px);padding:10px 10px 4px}
+.star-b{display:grid;place-items:center;width:44px;height:44px;border:0;background:transparent;padding:0;color:var(--ink-3);transition:transform .15s}
+.star-b .ic{width:34px;height:34px;stroke-width:1.6}
+.star-b[aria-pressed="true"]{color:#F5B700}
+.star-b[aria-pressed="true"] .ic{fill:#FFD21F;filter:drop-shadow(0 0 6px rgba(255,200,0,.7))}
+.star-b:active{transform:scale(.85)}
+.review{display:block;width:calc(100% - 20px);margin:4px 10px 12px;min-height:66px;resize:vertical;border:1.5px solid var(--line);border-radius:10px;background:var(--board-2);color:var(--ink);padding:8px 10px;font-size:calc(14.5px*var(--fs))}
+.review::placeholder{color:var(--ink-3)}
+.quote{position:relative;padding:16px 16px 14px 16px;min-height:150px;display:flex;flex-direction:column}
+.quote .qm{font-family:var(--f-display);font-style:italic;font-weight:900;font-size:58px;line-height:.6;color:#1450FF;height:26px}
+.quote p{margin:6px 0 8px;font-family:var(--f-hand);font-size:calc(19px*var(--fs));line-height:1.2;text-transform:uppercase;max-width:78%;text-wrap:balance}
+.quote .by{max-width:calc(100% - 84px);font-family:var(--f-label);font-weight:800;letter-spacing:.06em;font-size:calc(13px*var(--fs));color:var(--ink-2);text-transform:uppercase}
+.quote .tact{position:absolute;right:10px;bottom:10px;width:76px;height:76px;color:#0B2E8A;opacity:.9}
+#app[data-board="night"] .quote .tact{color:#5C8DFF}
+.quote .clip{position:absolute;right:16px;top:-12px;width:26px;height:46px;color:var(--red);transform:rotate(16deg);filter:drop-shadow(0 2px 2px rgba(0,0,0,.3))}
+.qnav{display:flex;gap:6px;margin-top:auto}
+.qnav button{width:36px;height:36px;border-radius:9px;border:1.5px solid var(--line);background:var(--board-2);color:var(--ink);display:grid;place-items:center;padding:0}
+
+/* Alt bölüm */
+.foot{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2.3fr) minmax(0,1fr);align-items:end;gap:14px;padding:30px 0 14px;margin-top:6px}
+.ball{position:absolute;left:-6px;bottom:-40px;width:clamp(78px,8.5vw,124px);z-index:4;animation:roll 22s linear infinite;filter:drop-shadow(0 10px 14px rgba(0,0,0,.6))}
+@keyframes roll{to{transform:rotate(360deg)}}
+.tnote{position:relative;justify-self:start;background:linear-gradient(165deg,#F4E6C6,#E3CDA0);color:var(--kraft-ink);font-family:var(--f-hand);text-transform:uppercase;
+  font-size:calc(20px*var(--fs));padding:12px 18px 10px;box-shadow:0 10px 22px rgba(0,0,0,.5);display:flex;align-items:center;gap:8px;max-width:100%}
+.tnote.l{margin-left:clamp(70px,8vw,120px);transform:rotate(-3deg)}
+.tnote.r{justify-self:end;margin-right:14px;transform:rotate(-2deg)}
+.tnote .ic{width:28px;height:28px;color:#FF6A00}
+.tagline{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:.35em;margin:0;font-family:var(--f-marker);font-size:clamp(1.15rem,2.1vw,2.05rem);letter-spacing:.05em;text-transform:uppercase;text-align:center;line-height:1.05}
+.tagline .a{color:var(--gold);text-shadow:0 3px 0 #5A3A00}
+.tagline .b{color:#FF3A5F;text-shadow:0 3px 0 #5B0016}
+.banner{justify-self:center;margin-top:10px;padding:8px 46px;font-family:var(--f-label);font-weight:800;letter-spacing:.14em;font-size:calc(20px*var(--fs));color:#fff;text-transform:uppercase;
+  background:linear-gradient(180deg,#0B2E8A,#061C5E);clip-path:polygon(0 0,100% 0,96% 50%,100% 100%,0 100%,4% 50%);box-shadow:inset 0 0 0 2px var(--gold)}
+.banner .dot{color:var(--gold)}
+.mid{display:flex;flex-direction:column;align-items:center;min-width:0}
+.grass{position:relative;z-index:0;height:calc(52px + env(safe-area-inset-bottom,0px));
+  margin-left:calc(-1 * max(16px,env(safe-area-inset-left,0px)));margin-right:calc(-1 * max(16px,env(safe-area-inset-right,0px)));
+  background:repeating-linear-gradient(90deg,#14A94B 0 70px,#0F9441 70px 140px);box-shadow:0 -8px 30px rgba(22,184,82,.35)}
+.grass::before{content:"";position:absolute;left:0;right:0;top:-9px;height:10px;
+  background:linear-gradient(135deg,transparent 50%,#14A94B 50%) 0 0/9px 10px,linear-gradient(225deg,transparent 50%,#14A94B 50%) 0 0/9px 10px;opacity:.95}
+
+/* ---------- Katmanlar (pencereler) ---------- */
+.ov{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(0,3,15,.74);backdrop-filter:blur(6px);
+  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.panel{position:relative;width:min(720px,100%);max-height:100%;overflow:auto;background:linear-gradient(180deg,#081A50,var(--panel) 40%);color:var(--txt);
+  border:1px solid var(--edge);border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 44px rgba(20,80,255,.3);overscroll-behavior:contain;animation:pop .22s ease-out}
+.panel.wide{width:min(1040px,100%)}
+@keyframes pop{from{transform:translateY(14px) scale(.98);opacity:0}}
+.ph{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;padding:14px 14px 12px 18px;background:rgba(8,26,80,.96);border-bottom:1px solid #1C357F}
+.ph h2{margin:0;flex:1;min-width:0;display:flex;align-items:center;gap:9px;font-family:var(--f-label);font-weight:800;letter-spacing:.08em;font-size:calc(21px*var(--fs));text-transform:uppercase}
+.ph h2 .ic{color:var(--gold);width:1.2em;height:1.2em}
+.ph .sub{display:block;font-family:var(--f-label);font-weight:700;letter-spacing:.08em;font-size:calc(14px*var(--fs));color:var(--gold);text-transform:uppercase}
+.pb{padding:16px 18px 18px}
+.pf{position:sticky;bottom:0;display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;padding:12px 18px;background:rgba(6,18,58,.97);border-top:1px solid #1C357F}
+.pf .grp{gap:8px}
+.lbl{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:14px 0 8px;font-family:var(--f-label);font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:calc(14px*var(--fs));color:var(--txt-2)}
+.lbl:first-child{margin-top:0}
+.lbl small{text-transform:none;letter-spacing:0;font-family:var(--f-read);font-weight:400;color:#8597CC}
+.field,.panel textarea,.panel select,.panel input[type="time"],.panel input[type="date"],.panel input[type="text"]{width:100%;border:1.5px solid #2A4AA8;border-radius:11px;background:#081649;color:#fff;
+  padding:11px 12px;font-size:calc(17px*var(--fs));line-height:1.45;outline:none}
+.panel textarea{resize:vertical}
+.panel textarea:focus,.panel input:focus,.panel select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,210,31,.2)}
+.panel ::placeholder{color:#6F82BD}
+.hint{margin:10px 0 0;color:#8FA2D8;font-size:calc(14px*var(--fs))}
+.pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.pk{display:flex;align-items:center;gap:8px;min-height:50px;padding:6px 10px;border-radius:12px;border:1.5px solid #2A4AA8;background:#081649;color:#fff;text-align:left;
+  font-family:var(--f-label);font-weight:800;letter-spacing:.04em;font-size:calc(16px*var(--fs));line-height:1.05}
+.pk i{flex:none;width:14px;height:14px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c)}
+.pk small{display:block;font-family:var(--f-read);font-weight:400;letter-spacing:0;font-size:.74em;color:#9FB0E0;margin-top:2px}
+.pk[aria-pressed="true"]{border-color:var(--c);background:color-mix(in srgb,var(--c) 22%,#081649);box-shadow:0 0 14px color-mix(in srgb,var(--c) 45%,transparent)}
+.eb{display:grid;grid-template-columns:auto minmax(88px,1fr) auto minmax(88px,1fr) minmax(0,1.6fr) auto auto;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #1C357F}
+.eb .dash{color:#8FA2D8}
+.eb .dur{font-family:var(--f-label);font-weight:800;color:var(--gold);white-space:nowrap;font-size:calc(15px*var(--fs))}
+.eb .tick{border-color:#5770B8;width:34px;height:34px}
+.eb.timer{opacity:.92}
+.trow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #1C357F}
+.trow .tick{border-color:#5770B8;width:34px;height:34px}
+.trow input{flex:1}
+.addrow{display:flex;gap:8px;margin-top:12px}
+.addrow input{flex:1}
+.empty-note{margin:4px 0;color:#8FA2D8;font-style:italic}
+.ed-del{width:40px;height:40px;border-radius:10px;border:1px solid #33509E;background:transparent;color:#FF8DA4;display:grid;place-items:center;padding:0}
+input[type="range"]{width:100%;accent-color:var(--gold);height:34px}
+output{font-family:var(--f-display);font-style:italic;font-weight:900;font-stretch:125%;color:var(--gold);font-size:1.3em}
+.seg{display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;border-radius:12px;background:#071443;border:1px solid #23409C}
+.seg button{min-height:40px;padding:0 13px;border:0;border-radius:9px;background:transparent;color:#C9D6FF;font-family:var(--f-label);font-weight:800;letter-spacing:.04em;font-size:calc(15px*var(--fs))}
+.seg button[aria-pressed="true"]{background:#1450FF;color:#fff;box-shadow:0 0 12px rgba(20,80,255,.6)}
+.set-sec{padding:14px 0;border-bottom:1px solid #1C357F}
+.set-sec:last-child{border-bottom:0}
+.set-sec h3{margin:0 0 10px;font-family:var(--f-label);font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);font-size:calc(16px*var(--fs))}
+.set-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:6px 0}
+.set-row > span{font-size:calc(16px*var(--fs))}
+.cdrow,.subrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px 0}
+.subrow{grid-template-columns:auto minmax(0,2fr) minmax(64px,.6fr) auto}
+.sw{width:40px;height:40px;border-radius:50%;border:3px solid #fff;background:var(--c);box-shadow:0 0 12px var(--c);padding:0}
+.pal{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;padding:4px 0 8px}
+.pal button{width:34px;height:34px;border-radius:50%;border:2px solid rgba(255,255,255,.4);background:var(--c);box-shadow:0 0 8px var(--c);padding:0}
+
+/* Maç Saati */
+.timer-panel{width:min(860px,100%);text-align:center}
+.phase{font-family:var(--f-label);font-weight:800;letter-spacing:.22em;font-size:calc(20px*var(--fs));color:var(--gold);text-transform:uppercase}
+.clockwrap{position:relative;width:min(400px,78vw);aspect-ratio:1;max-width:100%;margin:6px auto 4px}
+.clockwrap svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.ring-bg{stroke:#132A72}
+.ring{stroke:var(--gold);filter:drop-shadow(0 0 10px rgba(255,210,31,.8));transition:stroke-dashoffset .3s linear}
+.ring.brk{stroke:#19D27A;filter:drop-shadow(0 0 10px rgba(25,210,122,.8))}
+.clockface{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.big{font-family:var(--f-display);font-style:italic;font-weight:900;font-stretch:125%;font-size:clamp(3.4rem,12vw,6.6rem);line-height:1;font-variant-numeric:tabular-nums;color:#fff;
+  text-shadow:0 0 26px rgba(92,141,255,.75)}
+.minute{font-family:var(--f-display);font-style:italic;font-weight:800;font-stretch:125%;font-size:calc(22px*var(--fs));color:var(--gold);margin-top:6px}
+.tsub{font-family:var(--f-label);font-weight:700;letter-spacing:.06em;color:var(--txt-2);font-size:calc(15px*var(--fs));margin-top:4px;text-transform:uppercase}
+.tctl{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:10px 0 4px}
+.tctl .btn{min-height:54px;padding:0 22px;font-size:calc(18px*var(--fs))}
+.tset{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;text-align:left;margin-top:12px}
+.tset .seg{display:flex}
+.whistle-flash{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);font-family:var(--f-marker);font-size:clamp(2.4rem,8vw,4.6rem);color:var(--gold);letter-spacing:.05em;
+  text-shadow:0 4px 0 #5A3A00,0 0 30px rgba(255,210,31,.8);pointer-events:none;white-space:nowrap;animation:flash 2.4s ease-out forwards}
+@keyframes flash{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}15%{opacity:1;transform:translate(-50%,-50%) scale(1.06)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-62%) scale(1)}}
+
+/* Maç Raporu */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.kpi{padding:12px 14px;border-radius:14px;background:#081649;border:1px solid #23409C}
+.kpi .k{font-family:var(--f-label);font-weight:800;letter-spacing:.08em;font-size:calc(13px*var(--fs));color:var(--txt-2);text-transform:uppercase}
+.kpi .v{font-family:var(--f-display);font-style:italic;font-weight:900;font-stretch:125%;font-size:calc(28px*var(--fs));line-height:1.1;color:#fff;font-variant-numeric:tabular-nums}
+.kpi .v small{font-size:.5em;color:var(--txt-2);font-style:normal}
+.kpi .s{font-size:calc(13px*var(--fs));color:#8FA2D8}
+.charts{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:14px;margin-top:14px}
+.chartcard{position:relative;padding:14px;border-radius:16px;background:#06123A;border:1px solid #1E3A8A;min-width:0}
+.chartcard h3{margin:0 0 6px;font-family:var(--f-label);font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:calc(15px*var(--fs));color:#fff}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:calc(14px*var(--fs));color:var(--txt-2);margin-bottom:4px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:3px;background:var(--c)}
+.chart{width:100%;height:auto;display:block;overflow:visible}
+.chart .gl{stroke:#1A2E6E;stroke-width:1}
+.chart .bl{stroke:#3A55A8;stroke-width:1.5}
+.chart .ax{fill:#9FB0E0;font-family:var(--f-label);font-weight:700;font-size:13px}
+.chart .b-plan{fill:var(--plan)} .chart .b-done{fill:var(--done)}
+.chart .hit{fill:transparent;cursor:crosshair}
+.chart .hit:hover{fill:rgba(255,255,255,.04)}
+.chart .ln{fill:none;stroke:var(--done);stroke-width:2;stroke-linejoin:round}
+.chart .ar{fill:var(--done);opacity:.14}
+.chart .pt{fill:var(--done);stroke:#06123A;stroke-width:2}
+.chart .xh{stroke:#8FA2D8;stroke-width:1;stroke-dasharray:3 3}
+.tip{position:absolute;z-index:3;pointer-events:none;padding:8px 10px;border-radius:10px;background:#020A2A;border:1px solid #3A55A8;color:#fff;font-size:calc(14px*var(--fs));white-space:nowrap;box-shadow:0 10px 24px rgba(0,0,0,.5)}
+.tip b{font-family:var(--f-label);letter-spacing:.06em}
+.tip .r{display:flex;align-items:center;gap:6px}
+.tip i{width:10px;height:10px;border-radius:3px;background:var(--c)}
+.sbars{display:flex;flex-direction:column;gap:8px}
+.sbar{display:grid;grid-template-columns:4.6em minmax(0,1fr) auto;align-items:center;gap:8px;font-size:calc(14px*var(--fs))}
+.sbar .n{font-family:var(--f-label);font-weight:800;letter-spacing:.04em;display:flex;align-items:center;gap:6px}
+.sbar .n::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--c);flex:none}
+.sbar .t{height:14px;border-radius:0 4px 4px 0;background:#0D1D55;overflow:hidden}
+.sbar .t i{display:block;height:100%;background:var(--c);border-radius:0 4px 4px 0}
+.sbar .v{font-variant-numeric:tabular-nums;color:var(--txt-2);font-family:var(--f-label);font-weight:700}
+.summary{margin:14px 0 0;padding:14px 16px;border-radius:14px;background:rgba(255,210,31,.08);border:1px solid rgba(255,210,31,.3);font-size:calc(16px*var(--fs));line-height:1.55}
+.tbl-toggle{margin-top:10px}
+.dtable{width:100%;border-collapse:collapse;margin-top:8px;font-size:calc(14px*var(--fs))}
+.dtable th,.dtable td{padding:6px 8px;border-bottom:1px solid #1C357F;text-align:right;font-variant-numeric:tabular-nums}
+.dtable th:first-child,.dtable td:first-child{text-align:left}
+.tablewrap{overflow-x:auto}
+
+/* Teknik Direktör */
+.coach-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.coach-actions .btn{min-height:58px;justify-content:flex-start;text-align:left;padding:8px 14px;line-height:1.1}
+.coach-actions .btn small{display:block;font-family:var(--f-read);text-transform:none;letter-spacing:0;font-weight:400;font-size:.78em;color:#B9C7F2;margin-top:3px}
+.coach-out{margin-top:14px;padding:16px 18px;border-radius:14px;background:#081649;border:1px solid #23409C;min-height:90px;white-space:pre-wrap;font-size:calc(17px*var(--fs));line-height:1.62}
+.coach-out.idle{color:#8FA2D8;font-style:italic}
+.sug{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #1C357F}
+.sug .tick{margin-top:2px;width:30px;height:30px;border-color:#5770B8}
+.sug b{font-family:var(--f-label);letter-spacing:.05em;color:var(--gold)}
+.noai .ai-only{display:none}
+.ai-off{display:none}
+.noai .ai-off{display:block}
+
+/* Onay, bildirim, gol */
+.confirm .panel{width:min(460px,100%)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);z-index:95;opacity:0;pointer-events:none;
+  max-width:min(560px,calc(100vw - 32px));padding:12px 18px;border-radius:14px;background:#0B1F62;border:1px solid var(--gold);color:#fff;font-size:calc(15px*var(--fs));
+  box-shadow:0 14px 40px rgba(0,0,0,.6);transition:opacity .25s,transform .25s;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.gol{position:fixed;inset:0;z-index:92;display:grid;place-items:center;pointer-events:none}
+.gol span{font-family:var(--f-marker);font-size:clamp(4rem,16vw,11rem);color:var(--gold);letter-spacing:.04em;text-shadow:0 6px 0 #5A3A00,0 0 50px rgba(255,210,31,.9);animation:golIn 2.2s ease-out forwards}
+@keyframes golIn{0%{transform:scale(.3) rotate(-8deg);opacity:0}18%{transform:scale(1.12) rotate(-4deg);opacity:1}70%{transform:scale(1) rotate(-4deg);opacity:1}100%{transform:scale(1.05) rotate(-4deg);opacity:0}}
+
+/* Dışa aktarma sırasında */
+.exporting .no-export{display:none!important}
+.exporting *{animation:none!important}
+.exporting .cell.today{background:var(--today-bg)}
+.exporting .cell.has{background:var(--board)}
+.exporting .sc{background:var(--board)}
+.exporting .club{background:none;-webkit-text-fill-color:#fff;color:#fff;filter:none;text-shadow:0 5px 0 #031650}
+summary::-webkit-details-marker{display:none}
+
+/* ---------- Uyumlu yerleşim ---------- */
+@media (max-width:1179px){
+  .pitch{grid-template-columns:minmax(0,1fr)}
+  .side{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .hero{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,.9fr);grid-template-areas:"tb tb cr" "nl sb nr"}
+  .charts{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:759px){
+  .grid{display:none}
+  .dayview{display:block}
+  .board{padding:8px}
+  .side{grid-template-columns:minmax(0,1fr)}
+  .hero{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"tb tb" "sb cr" "nl nr";gap:12px}
+  .crest-svg{width:min(100%,140px)}
+  .kraft{font-size:calc(16px*var(--fs));padding:20px 10px 12px}
+  .sticky{font-size:calc(17px*var(--fs))}
+  .strip{justify-content:center}
+  .btn .lbl-t{display:none}
+  .wk{min-width:9.5em}
+  .foot{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"m m" "l r"}
+  .foot{padding-bottom:46px}
+  .foot .mid{grid-area:m} .tnote.l{grid-area:l;margin-left:12px} .tnote.r{grid-area:r}
+  .ball{width:66px;bottom:-30px}
+  .tnote{font-size:calc(16px*var(--fs))}
+  .ov{place-items:end center;padding-bottom:0}
+  .panel{border-radius:20px 20px 0 0;max-height:94%}
+  .eb{grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr) auto;grid-template-areas:"t s d e x" "sub sub sub dur dur"}
+  .eb .tick{grid-area:t} .eb .s{grid-area:s} .eb .dash{grid-area:d} .eb .e{grid-area:e} .eb .ed-del{grid-area:x} .eb select{grid-area:sub} .eb .dur{grid-area:dur;text-align:right}
+  .side-row{grid-template-columns:minmax(0,1fr) minmax(0,.8fr)}
+}
+@media (prefers-reduced-motion:reduce){ .bg *, .crest-svg, .crest-bolt, .club, .ball, .clubbox::after, .lamps, .run{animation:none!important} }
+</style>
+
+<div id="app" lang="tr" data-board="day" data-motion="on">
+  <div class="bg" aria-hidden="true">
+    <div class="beam l"></div><div class="beam r"></div><div class="beam g"></div>
+    <div class="lamps l"></div><div class="lamps r"></div>
+    <svg class="pitchlines" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+      <g fill="none" stroke="rgba(255,255,255,.07)" stroke-width="3">
+        <rect x="60" y="60" width="1480" height="880" rx="8"/>
+        <line x1="800" y1="60" x2="800" y2="940"/>
+        <circle cx="800" cy="500" r="140"/><circle cx="800" cy="500" r="5" fill="rgba(255,255,255,.1)"/>
+        <rect x="60" y="290" width="230" height="420"/><rect x="1310" y="290" width="230" height="420"/>
+        <rect x="60" y="400" width="80" height="200"/><rect x="1460" y="400" width="80" height="200"/>
+        <path d="M290 420a95 95 0 0 1 0 160M1310 420a95 95 0 0 0 0 160"/>
+      </g>
+      <g fill="none" stroke="rgba(255,210,31,.24)" stroke-width="4" stroke-linecap="round">
+        <path class="run" d="M380 780C520 650 650 720 770 560"/>
+        <path class="run b" d="M1200 240C1070 380 990 300 860 430"/>
+        <path class="run c" d="M520 280C650 350 700 450 790 495"/>
+      </g>
+      <g fill="none" stroke="rgba(255,255,255,.13)" stroke-width="5" stroke-linecap="round">
+        <path d="M360 760l40 40M400 760l-40 40M1190 210l40 40M1230 210l-40 40M500 250l40 40M540 250l-40 40"/>
+        <circle cx="790" cy="560" r="20"/><circle cx="850" cy="440" r="20"/><circle cx="1050" cy="640" r="20"/>
+      </g>
+    </svg>
+    <canvas id="fx"></canvas>
+  </div>
+  <canvas id="fxTop" aria-hidden="true"></canvas>
+
+  <div class="stage" id="poster">
+    <header class="hero">
+      <div class="nl">
+        <div class="kraft"><span class="tape tl red"></span><span class="tape tr"></span>
+          <p class="ne" data-note="a" data-ph="Notun" aria-label="Sol not, düzenlemek için dokun"></p>
+          <svg class="doodle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4.5 13.5H11L10 22l8.5-11.5H12L13 2z"/></svg>
+        </div>
+        <div class="sticky"><span class="tape sm"></span><p class="ne" data-note="b" data-ph="Kısa not" aria-label="Sarı not, düzenlemek için dokun" style="margin:0"></p></div>
+      </div>
+
+      <button type="button" class="scoreboard" id="scoreboard" aria-label="Hafta skoru, raporu aç">
+        <div class="sb-top">HAFTA SKORU</div>
+        <div class="sb-score"><b id="sbDone">0</b><i>–</i><span id="sbPlan">0</span></div>
+        <div class="sb-lbl">YAPILAN – PLAN · SAAT</div>
+        <div class="sb-bar"><i id="sbBar"></i></div>
+        <div class="sb-meta"><span class="streak" id="sbStreak"></span><span class="clock" id="sbClock"></span></div>
+      </button>
+
+      <div class="tb">
+        <p class="topq"><svg class="spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M3 5l8 4.5M2 12h9.5M3 19l8-4.5"/></svg><span class="ne" data-note="top" data-single data-ph="Üst slogan" aria-label="Üst slogan, düzenlemek için dokun"></span><svg class="spark flip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M3 5l8 4.5M2 12h9.5M3 19l8-4.5"/></svg></p>
+        <h1 class="club" id="clubName">ŞİMŞEK FC</h1>
+        <p class="subt">HAFTALIK DERS ÇALIŞMA PROGRAMI</p>
+      </div>
+
+      <div class="cr" id="crest"></div>
+
+      <div class="nr">
+        <div class="kraft"><span class="tape tl"></span><span class="tape tr red"></span>
+          <p class="ne" data-note="c" data-ph="Notun" aria-label="Sağ not, düzenlemek için dokun"></p>
+          <svg class="doodle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.3s-7.6-4.6-9.3-9.4C1.6 7.7 3.6 4.5 7.1 4.5c2 0 3.7 1.1 4.9 2.8 1.2-1.7 2.9-2.8 4.9-2.8 3.5 0 5.5 3.2 4.4 6.4-1.7 4.8-9.3 9.4-9.3 9.4z"/></svg>
+        </div>
+      </div>
+    </header>
+
+    <nav class="strip no-export" aria-label="Kontroller">
+      <div class="grp">
+        <button type="button" class="icon-btn" id="prevW" aria-label="Önceki hafta"></button>
+        <div class="wk"><strong id="wkLabel"></strong><small id="wkTag"></small></div>
+        <button type="button" class="icon-btn" id="nextW" aria-label="Sonraki hafta"></button>
+        <button type="button" class="btn sm ghost" id="todayW">Bugün</button>
+        <span class="sync" id="sync" data-s="local" title="Kayıt durumu"><i></i><span id="syncT">Bu cihazda</span></span>
+      </div>
+      <div class="cds" id="cds"></div>
+      <div class="grp">
+        <button type="button" class="tmpill" id="tmPill" hidden><span class="live"></span><span id="tmPillP"></span><b id="tmPillT"></b></button>
+        <button type="button" class="btn gold" id="openTimer"></button>
+        <button type="button" class="btn" id="openReport"></button>
+        <button type="button" class="btn" id="openCoach"></button>
+        <button type="button" class="icon-btn" id="boardMode" aria-label="Tahta rengini değiştir"></button>
+        <div class="menu-wrap">
+          <button type="button" class="icon-btn" id="moreBtn" aria-haspopup="true" aria-expanded="false" aria-label="Diğer işlemler"></button>
+          <div class="menu" id="moreMenu" hidden role="menu"></div>
+        </div>
+      </div>
+    </nav>
+
+    <main class="pitch">
+      <section class="board" aria-label="Haftalık program tahtası">
+        <div class="grid" id="grid"></div>
+        <div class="dayview" id="dayview"></div>
+        <div class="slotbar no-export"><span>Ders saati: <b id="slotCount">9</b></span><button type="button" class="sbtn" id="slotMinus" aria-label="Son ders saatini kaldır">−</button><button type="button" class="sbtn" id="slotPlus" aria-label="Ders saati ekle">+</button><button type="button" class="sbtn wide" id="slotArrange">Saatleri toplu diz</button></div>
+      </section>
+
+      <aside class="side">
+        <section class="card">
+          <header class="card-h red" id="goalsH"></header>
+          <div class="gprog"><i id="gprog"></i></div>
+          <ol class="goals" id="goals"></ol>
+        </section>
+        <div class="side-row">
+          <section class="card">
+            <header class="card-h yel" id="unutmaH"></header>
+            <ul class="unutma" id="unutma"></ul>
+          </section>
+          <section class="clubbox" aria-label="Kulüp sloganı">
+            <svg class="ic" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4.5 13.5H11L10 22l8.5-11.5H12L13 2z"/></svg>
+            <strong id="clubBoxName">ŞİMŞEK FC</strong>
+            <span>SON DÜDÜĞE KADAR</span>
+          </section>
+        </div>
+        <section class="card">
+          <header class="card-h blue">HAFTALIK DEĞERLENDİRME</header>
+          <div class="stars" id="stars" role="group" aria-label="Haftaya puan ver"></div>
+          <label class="sr" for="review">Haftalık değerlendirme notu</label>
+          <textarea class="review" id="review" rows="2" placeholder="Bu hafta ne iyi gitti, neyi değiştireceksin?"></textarea>
+        </section>
+        <section class="card quote" aria-live="polite">
+          <svg class="clip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M8 7v8.5a4 4 0 0 0 8 0V5.5a2.6 2.6 0 0 0-5.2 0V15a1.2 1.2 0 0 0 2.4 0V7.5"/></svg>
+          <div class="qm" aria-hidden="true">“</div>
+          <p id="qText"></p>
+          <span class="by" id="qBy"></span>
+          <div class="qnav no-export"><button type="button" id="qPrev" aria-label="Önceki söz"></button><button type="button" id="qNext" aria-label="Sonraki söz"></button></div>
+          <svg class="tact" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="10" y="8" width="44" height="52" rx="5"/><path d="M24 8V4h16v4"/>
+            <path d="M18 20l6 6M24 20l-6 6"/><circle cx="44" cy="44" r="5"/>
+            <path d="M22 46c6-10 12-15 20-17" stroke-dasharray="3 4"/><path d="M38 26l5 2.6-2.6 5"/>
+          </svg>
+        </section>
+      </aside>
+    </main>
+
+    <footer class="foot">
+      <svg class="ball" viewBox="0 0 100 100" aria-hidden="true">
+        <defs>
+          <radialGradient id="ballG" cx="36%" cy="30%" r="78%"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".68" stop-color="#E4E9F3"/><stop offset="1" stop-color="#8E98AE"/></radialGradient>
+          <clipPath id="ballC"><circle cx="50" cy="50" r="47"/></clipPath>
+        </defs>
+        <circle cx="50" cy="50" r="48" fill="url(#ballG)" stroke="#0A1030" stroke-width="2"/>
+        <g clip-path="url(#ballC)" fill="#0A1030" stroke="#0A1030" stroke-width="1.6">
+          <polygon points="50,31 68.1,44.1 61.2,65.4 38.8,65.4 31.9,44.1"/>
+          <polygon points="50,-2 62,6.7 57.4,20.9 42.6,20.9 38,6.7"/>
+          <polygon points="94,30 101,44 90.6,55.9 78.6,47.2 80.6,32.6"/>
+          <polygon points="80.4,94 64,96 58.8,82.3 70.2,73 82.6,80"/>
+          <polygon points="19.6,94 17.4,80 29.8,73 41.2,82.3 36,96"/>
+          <polygon points="6,30 19.4,32.6 21.4,47.2 9.4,55.9 -1,44"/>
+          <path d="M50 31V21M68.1 44.1l10.5-3.2M61.2 65.4l6.8 8.5M38.8 65.4l-6.8 8.5M31.9 44.1l-10.5-3.2" fill="none"/>
+        </g>
+      </svg>
+      <div class="tnote l"><span class="tape tl"></span><span class="ne" data-note="d" data-ph="Not" aria-label="Alt sol not, düzenlemek için dokun"></span></div>
+      <div class="mid">
+        <p class="tagline"><svg class="spark" viewBox="0 0 24 24" fill="none" stroke="#FFD21F" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M3 5l8 4.5M2 12h9.5M3 19l8-4.5"/></svg><span class="ne a" data-note="tagA" data-single data-ph="Slogan" aria-label="Alt slogan birinci kısım"></span><span class="ne b" data-note="tagB" data-single data-ph="devamı" aria-label="Alt slogan ikinci kısım"></span><svg class="spark flip" viewBox="0 0 24 24" fill="none" stroke="#FFD21F" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M3 5l8 4.5M2 12h9.5M3 19l8-4.5"/></svg></p>
+        <div class="banner"><span class="dot">•</span> <span id="bannerName">ŞİMŞEK FC</span> <span class="dot">•</span></div>
+      </div>
+      <div class="tnote r"><span class="tape tr"></span><span class="ne" data-note="e" data-ph="Not" aria-label="Alt sağ not, düzenlemek için dokun"></span>
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3h3.4l5 16.5H5.3z"/><path d="M8.6 9h6.8M7.1 14h9.8M3 21h18"/></svg>
+      </div>
+    </footer>
+  </div>
+  <div class="grass" aria-hidden="true"></div>
+
+  <!-- Hücre düzenleyici -->
+  <div class="ov" id="ov-ed" hidden role="dialog" aria-modal="true" aria-labelledby="edTitle">
+    <div class="panel">
+      <div class="ph"><h2 id="edTitle"></h2><button type="button" class="icon-btn" data-close aria-label="Kapat"></button></div>
+      <div class="pb"><span class="sub" id="edSub"></span><div id="edBody" style="margin-top:12px"></div></div>
+      <div class="pf">
+        <div class="grp"><button type="button" class="btn sm ghost" id="edPrev"></button><button type="button" class="btn sm ghost" id="edNext"></button><button type="button" class="btn sm ghost" id="edUp"></button><button type="button" class="btn sm ghost" id="edDown"></button></div>
+        <div class="grp"><button type="button" class="btn sm ghost" id="edCopyWd"></button><button type="button" class="btn sm ghost" id="edCopyAll"></button><button type="button" class="btn sm ghost" id="edClear"></button><button type="button" class="btn sm gold" data-close>Bitti</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Maç Saati -->
+  <div class="ov" id="ov-timer" hidden role="dialog" aria-modal="true" aria-labelledby="tmTitle">
+    <div class="panel timer-panel">
+      <div class="ph"><h2 id="tmTitle"></h2><button type="button" class="icon-btn" data-close aria-label="Kapat"></button></div>
+      <div class="pb" style="position:relative">
+        <div class="phase" id="tmPhase">HAZIR</div>
+        <div class="clockwrap">
+          <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="ring-bg" cx="60" cy="60" r="54" fill="none" stroke-width="7"/><circle class="ring" id="tmRing" cx="60" cy="60" r="54" fill="none" stroke-width="7" stroke-linecap="round" stroke-dasharray="339.3" stroke-dashoffset="339.3"/></svg>
+          <div class="clockface"><div class="big" id="tmBig" role="timer" aria-live="off">25:00</div><div class="minute" id="tmMin">0'</div><div class="tsub" id="tmSub"></div></div>
+        </div>
+        <div class="tctl" id="tmCtl"></div>
+        <div id="tmFlashHost"></div>
+        <div class="lbl" style="margin-top:16px">Sahaya çıkan ders <small>seçtiğin ders bloğa yazılır</small></div>
+        <div class="pick" id="tmSubs"></div>
+        <div class="tset">
+          <div><div class="lbl">Devre süresi</div><div class="seg" id="tmHalf"></div></div>
+          <div><div class="lbl">Devre arası</div><div class="seg" id="tmBrk"></div></div>
+          <div><div class="lbl">Devre sayısı</div><div class="seg" id="tmN"></div></div>
+        </div>
+        <p class="hint" id="tmToday"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Maç Raporu -->
+  <div class="ov" id="ov-report" hidden role="dialog" aria-modal="true" aria-labelledby="rpTitle">
+    <div class="panel wide">
+      <div class="ph"><h2 id="rpTitle"></h2><button type="button" class="icon-btn" data-close aria-label="Kapat"></button></div>
+      <div class="pb" id="rpBody"></div>
+    </div>
+  </div>
+
+  <!-- Teknik Direktör -->
+  <div class="ov" id="ov-coach" hidden role="dialog" aria-modal="true" aria-labelledby="coTitle">
+    <div class="panel wide">
+      <div class="ph"><h2 id="coTitle"></h2><button type="button" class="icon-btn" data-close aria-label="Kapat"></button></div>
+      <div class="pb" id="coBody">
+        <div class="ai-off"><p class="coach-out idle">Teknik direktör yalnızca bu sayfa Claude içinde açıkken konuşabiliyor. Programın, skorun ve diğer her şey her yerde çalışır.</p></div>
+        <div class="ai-only">
+          <div class="coach-actions">
+            <button type="button" class="btn" id="aiEval"></button>
+            <button type="button" class="btn" id="aiPlan"></button>
+          </div>
+          <form class="addrow" id="aiAskForm"><label class="sr" for="aiAsk">Teknik direktöre soru</label><input type="text" id="aiAsk" placeholder="Teknik direktöre sor: Örn. Matematiği haftaya nasıl yayayım?" autocomplete="off"><button class="btn" type="submit" id="aiAskBtn"></button></form>
+          <div class="coach-out idle" id="aiOut">Haftanı değerlendirmesini, boş hücreler için plan önermesini ya da bir soru sormanı bekliyor. Her istek senin Claude kullanımından düşer; ilk seferde izin sorulur.</div>
+          <div id="aiSug"></div>
+          <div class="addrow" id="aiStopRow" hidden><button type="button" class="btn red sm" id="aiStop">Durdur</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kadro (dersler) -->
+  <div class="ov" id="ov-squad" hidden role="dialog" aria-modal="true" aria-labelledby="sqTitle">
+    <div class="panel">
+      <div class="ph"><h2 id="sqTitle"></h2><button type="button" class="icon-btn" data-close aria-label="Kapat"></button></div>
+      <div class="pb"><p class="hint" style="margin-top:0">Her ders bir oyuncu: rengi, kısa kodu ve adı tahtada böyle görünür. Kod 4 harfi geçmesin.</p><div id="sqList"></div>
+        <div class="addrow"><button type="button" class="btn" id="sqAdd"></button></div></div>
+    </div>
+  </div>
+
+  <!-- Ayarlar -->
+  <div class="ov" id="ov-set" hidden role="dialog" aria-modal="true" aria-labelledby="stTitle">
+    <div class="panel">
+      <div class="ph"><h2 id="stTitle"></h2><button type="button" class="icon-btn" data-close aria-label="Kapat"></button></div>
+      <div class="pb" id="stBody"></div>
+    </div>
+  </div>
+
+  <!-- Resim önizleme (indirme yoksa) -->
+  <div class="ov" id="ov-img" hidden role="dialog" aria-modal="true" aria-labelledby="imTitle">
+    <div class="panel wide">
+      <div class="ph"><h2 id="imTitle">Haftanın görseli</h2><button type="button" class="icon-btn" data-close aria-label="Kapat"></button></div>
+      <div class="pb"><p class="hint" style="margin-top:0">Görsele uzun basıp kaydedebilirsin.</p><img id="imImg" alt="Haftalık programın görseli" style="width:100%;border-radius:12px"></div>
+    </div>
+  </div>
+
+  <!-- Onay -->
+  <div class="ov confirm" id="ov-confirm" hidden role="alertdialog" aria-modal="true" aria-labelledby="cfTitle">
+    <div class="panel">
+      <div class="ph"><h2 id="cfTitle"></h2></div>
+      <div class="pb"><p id="cfText" style="margin:0;font-size:calc(17px*var(--fs))"></p></div>
+      <div class="pf"><button type="button" class="btn ghost" id="cfNo">Vazgeç</button><button type="button" class="btn red" id="cfYes">Evet</button></div>
+    </div>
+  </div>
+
+  <input type="file" id="importFile" accept="application/json,.json" hidden>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="gol" id="gol" hidden aria-hidden="true"><span>GOOOL!</span></div>
+</div>
+
+<script>
+(() => {
+'use strict';
+/* ================= yardımcılar ================= */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nl2br = s => esc(s).replace(/\n/g, '<br>');
+const rid = () => Math.random().toString(36).slice(2, 9);
+const clone = o => (typeof structuredClone === 'function' ? structuredClone(o) : JSON.parse(JSON.stringify(o)));
+const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+const pad = n => String(n).padStart(2, '0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseYmd = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const addDays = (d, n) => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() + n); return x; };
+const mondayOf = d => addDays(d, -((d.getDay() + 6) % 7));
+const wkKey = mon => 'w_' + ymd(mon);
+const wkMon = key => parseYmd(key.slice(2));
+const hm = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const toMin = t => { const m = /^(\d{1,2}):(\d{2})$/.exec(t || ''); return m ? (+m[1]) * 60 + (+m[2]) : null; };
+const upTR = s => String(s || '').toLocaleUpperCase('tr-TR');
+const fmtDur = m => { m = Math.max(0, Math.round(m)); const h = Math.floor(m / 60), r = m % 60; if (!h) return `${r} dk`; return r ? `${h} sa ${r} dk` : `${h} sa`; };
+const fmtHrs = m => { const h = Math.round((m / 60) * 10) / 10; return h.toLocaleString('tr-TR'); };
+const fmtR = r => Number(r).toLocaleString('tr-TR', { minimumFractionDigits: r % 1 ? 1 : 0, maximumFractionDigits: 1 });
+const rClass = r => r >= 7 ? 'hi' : r >= 5 ? 'mid' : 'lo';
+const prefersReduce = window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false, addEventListener() {} };
+
+const ICON = {
+  bolt: '<path d="M13 2 4.5 13.5H11L10 22l8.5-11.5H12L13 2z"/>',
+  ball: '<circle cx="12" cy="12" r="9.5"/><path d="M12 7.3l4.2 3.1-1.6 4.9H9.4l-1.6-4.9z"/><path d="M12 2.5v4.8M16.2 10.4l4.4-1.5M14.6 15.3l2.7 3.8M9.4 15.3l-2.7 3.8M7.8 10.4 3.4 8.9"/>',
+  whistle: '<path d="M2.5 13a5.5 5.5 0 1 0 11 0v-2h7.5V7.5H8A5.5 5.5 0 0 0 2.5 13z"/><circle cx="8" cy="13" r="1.6"/><path d="M13.5 7.5V5"/>',
+  cone: '<path d="M10.3 3h3.4l5 16.5H5.3z"/><path d="M8.6 9h6.8M7.1 14h9.8M3 21h18"/>',
+  medal: '<circle cx="12" cy="15.5" r="5.5"/><path d="M8 2.5h3l2 7.2M16 2.5h-3"/><path d="m12 13 .9 1.8 2 .3-1.45 1.4.35 2L12 17.6l-1.8.9.35-2-1.45-1.4 2-.3z"/>',
+  jersey: '<path d="M8.2 3 3 6.2l2.2 4.3 2.3-1.1V21h9V9.4l2.3 1.1L21 6.2 15.8 3c-.6 1.5-2 2.4-3.8 2.4S8.8 4.5 8.2 3z"/><path d="M10.6 12.2h2.8L11.6 18" stroke-width="1.8"/>',
+  shirt: '<path d="M8.2 3 3 6.2l2.2 4.3 2.3-1.1V21h9V9.4l2.3 1.1L21 6.2 15.8 3c-.6 1.5-2 2.4-3.8 2.4S8.8 4.5 8.2 3z"/>',
+  heart: '<path d="M12 20.3s-7.6-4.6-9.3-9.4C1.6 7.7 3.6 4.5 7.1 4.5c2 0 3.7 1.1 4.9 2.8 1.2-1.7 2.9-2.8 4.9-2.8 3.5 0 5.5 3.2 4.4 6.4-1.7 4.8-9.3 9.4-9.3 9.4z"/>',
+  book: '<path d="M2.5 5.5c2.8-1.1 6.2-1 9.5 1 3.3-2 6.7-2.1 9.5-1v13.2c-2.8-1.1-6.2-1-9.5 1-3.3-2-6.7-2.1-9.5-1z"/><path d="M12 6.5v13.2"/>',
+  target: '<circle cx="11" cy="13" r="8"/><circle cx="11" cy="13" r="4.2"/><circle cx="11" cy="13" r=".9"/><path d="m11 13 8.5-8.5M16.5 4.5h3v3"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5.2l3.4 2"/>',
+  cup: '<path d="M5 9h11v5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5z"/><path d="M16 10.5h1.3a2.6 2.6 0 0 1 0 5.2H16M8 2.8c-.7 1 .7 2 0 3.2M11.5 2.8c-.7 1 .7 2 0 3.2M15 2.8c-.7 1 .7 2 0 3.2"/>',
+  clipboard: '<rect x="5" y="4" width="14" height="17.5" rx="2"/><path d="M9 4V2.8h6V4"/><path d="m8.5 10.8 1.6 1.6 3.2-3.2M8.5 16.5h7"/>',
+  star: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
+  brain: '<path d="M9.5 4.2A3 3 0 0 0 6 6.5a3 3 0 0 0-2 5 3 3 0 0 0 1.8 5A3 3 0 0 0 12 18V5.6a2.4 2.4 0 0 0-2.5-1.4z"/><path d="M14.5 4.2A3 3 0 0 1 18 6.5a3 3 0 0 1 2 5 3 3 0 0 1-1.8 5A3 3 0 0 1 12 18"/><path d="M8.5 10.5c1 0 1.8.6 1.8 1.6M15.5 10.5c-1 0-1.8.6-1.8 1.6"/>',
+  stopwatch: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M9.5 2.5h5M18.6 6.4l1.6-1.6"/>',
+  chart: '<path d="M3 20.5h18"/><rect x="5" y="11" width="3.2" height="7" rx=".6"/><rect x="10.4" y="5.5" width="3.2" height="12.5" rx=".6"/><rect x="15.8" y="13" width="3.2" height="5" rx=".6"/>',
+  tactic: '<rect x="2.5" y="3.5" width="19" height="14" rx="2"/><path d="m6 7 2.2 2.2M8.2 7 6 9.2"/><circle cx="16.5" cy="12.5" r="1.7"/><path d="M7.5 14.5c2.2-3 4.6-4.6 8-5.4M13.8 7.8l2 1.3-1.3 1.9M8 21h8M12 17.5V21"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  dots: '<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
+  chevL: '<path d="m15 5-7 7 7 7"/>', chevR: '<path d="m9 5 7 7-7 7"/>', chevU: '<path d="m5 15 7-7 7 7"/>', chevD: '<path d="m5 9 7 7 7-7"/>',
+  sun: '<circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.2M12 19.8V22M2 12h2.2M19.8 12H22M4.9 4.9l1.5 1.5M17.6 17.6l1.5 1.5M4.9 19.1l1.5-1.5M17.6 6.4l1.5-1.5"/>',
+  moon: '<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/>',
+  check: '<path d="m4.5 12.5 4.8 4.8L19.5 7"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>', x: '<path d="M6 6l12 12M18 6 6 18"/>',
+  trash: '<path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5"/>',
+  megaphone: '<path d="M3 10.2v3.6h3.2L13 18V6L6.2 10.2z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19.3 6a8.6 8.6 0 0 1 0 12"/>',
+  trophy: '<path d="M7 3.5h10v5.5a5 5 0 0 1-10 0z"/><path d="M7 5.5H4v1.2A3.3 3.3 0 0 0 7 10M17 5.5h3v1.2A3.3 3.3 0 0 1 17 10M12 14v3.5M8.5 21h7M9.5 17.5h5V21h-5z"/>',
+  smile: '<circle cx="12" cy="12" r="9"/><path d="M8.3 14.2a4.6 4.6 0 0 0 7.4 0M9 9.5h.01M15 9.5h.01" stroke-width="2.4"/>',
+  download: '<path d="M12 3.5v11.5M7 10.5l5 5 5-5M4 20.5h16"/>',
+  upload: '<path d="M12 15.5V4M7 8.5l5-5 5 5M4 20.5h16"/>',
+  copy: '<rect x="8.5" y="8.5" width="12" height="12" rx="2"/><path d="M15.5 8.5V5.5a2 2 0 0 0-2-2h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3"/>',
+  eraser: '<path d="m7 21-4.3-4.3a1.6 1.6 0 0 1 0-2.2L13.3 3.9a1.6 1.6 0 0 1 2.2 0l5.1 5.1a1.6 1.6 0 0 1 0 2.2L11 21z"/><path d="M7 21h14M8.5 9.6l6.2 6.2"/>',
+  image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/>',
+  play: '<path d="M7 4.5v15l12.5-7.5z" fill="currentColor"/>',
+  pause: '<path d="M8 4.5v15M16 4.5v15" stroke-width="3.4"/>',
+  flag: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+  sparkle: '<path d="M12 3c.6 4.3 2.7 6.4 7 7-4.3.6-6.4 2.7-7 7-.6-4.3-2.7-6.4-7-7 4.3-.6 6.4-2.7 7-7z"/><path d="M19 15.5c.3 1.6 1 2.3 2.5 2.5-1.5.3-2.2 1-2.5 2.5-.3-1.5-1-2.2-2.5-2.5 1.5-.2 2.2-.9 2.5-2.5z"/>',
+  send: '<path d="M21 3 10 14M21 3l-7 18-4-7-7-4z"/>',
+  calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+  table: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9.5h18M3 15h18M9 4v16"/>'
+};
+const ic = (n, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[n] || ''}</svg>`;
+
+const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+const DAYS_S = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+const DAY_IC = ['bolt', 'ball', 'whistle', 'cone', 'medal', 'jersey', 'heart'];
+const MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+const MAX_SLOTS = 12;
+const mm = m => { m = ((Math.round(m) % 1440) + 1440) % 1440; return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`; };
+function makeSlots(start = '08:00', len = 40, brk = 10, n = 9) { const out = []; let t = toMin(start) ?? 480; for (let i = 0; i < n; i++) { out.push({ s: mm(t), e: mm(t + len) }); t += len + brk; } return out; }
+const UNUTMA_IC = [['heart', '#FF2D55'], ['star', '#F5B700'], ['target', '#1450FF'], ['trophy', '#E0A100'], ['smile', '#0F9F4A']];
+const PALETTE = ['#FF2D55', '#FF8A1F', '#FFD21F', '#9BE15D', '#19D27A', '#00D1C1', '#21B8FF', '#3D6BFF', '#8B5CFF', '#D24DFF', '#FF5FB0', '#B8C2D9'];
+const QUOTES = [
+  'Skor tabelası sezon sonunda okunur. Bugün sadece pasını doğru ver.',
+  'Ezber kenarda izler, anlamak sahaya çıkar.',
+  'Zor konu güçlü rakiptir. Güçlü rakip seni büyütür.',
+  'Bir saat tam odak, dört saat yedek kulübesinden iyidir.',
+  'Isınmadan sahaya çıkan sakatlanır; tekrar etmeden konuya giren unutur.',
+  'Kaçan pozisyon maçı bitirmez. Bir sonraki atak her zaman gelir.',
+  'Taktik kâğıtta değil, her gün biraz uygulanarak kazanılır.',
+  'Yorulduğunda dur, ama oyundan çıkma.',
+  'En iyi takım en çok koşan değil, doğru yere koşandır.',
+  'Bugün yaptığın tekrar, sınav günü attığın goldür.',
+  'Hatadan korkan oyuncu topu istemez. Topu iste.',
+  'Devre arası dinlenmek içindir, oyunu bırakmak için değil.',
+  'Rakibin sınav değil; dünkü sensin.',
+  'Küçük paslar uzun atak kurar.'
+];
+const DEFAULT_SUBJECTS = [
+  { id: 'mat', name: 'Matematik AA SL', code: 'MAT', color: '#FF2D55' },
+  { id: 'biy', name: 'Biyoloji SL', code: 'BİY', color: '#19D27A' },
+  { id: 'tur', name: 'Türkçe A HL', code: 'TÜR', color: '#FF8A1F' },
+  { id: 'eng', name: 'English B HL', code: 'ENG', color: '#3D6BFF' },
+  { id: 'gp', name: 'Global Politics HL', code: 'GP', color: '#8B5CFF' },
+  { id: 'fr', name: 'Français B', code: 'FR', color: '#21B8FF' },
+  { id: 'tok', name: 'TOK', code: 'TOK', color: '#FFD21F' },
+  { id: 'ee', name: 'Extended Essay', code: 'EE', color: '#FF5FB0' },
+  { id: 'yks', name: 'YKS (TYT/AYT)', code: 'YKS', color: '#9BE15D' }
+];
+function defaultMeta() {
+  return {
+    v: 1, club: 'Şimşek FC', fs: 1, motion: true, board: 'day', sound: true, tone: 'whistle',
+    subjects: DEFAULT_SUBJECTS.map(s => ({ ...s })),
+    notes: {
+      a: 'İnanmak başarının yarısıdır.', b: 'Sahaya çık!', c: 'Dün kendinle yarış, bugün bir adım öne geç.',
+      d: 'Sen yaparsın!', e: 'Isınmadan sahaya çıkma.', top: 'Merak et, soru sor, öğren.',
+      tagA: 'Her gün bir pas,', tagB: 'sezon sonu şampiyonluk.'
+    },
+    unutma: ['Kendine inan.', 'Sürece güven.', 'Odaklan.', 'İstikrar kazanır.', 'Kendine iyi davran.'],
+    countdowns: [{ id: 'tyt', name: 'TYT', date: '2027-06-19' }, { id: 'ayt', name: 'AYT', date: '2027-06-20' }],
+    quotes: '', constraints: '', timer: { half: 25, brk: 5, halves: 2 },
+    slots: makeSlots(), slotGen: { start: '08:00', len: 40, brk: 10, n: 9 }, updatedAt: 0
+  };
+}
+function mergeMeta(m) {
+  const d = defaultMeta(); m = m || {};
+  const o = { ...d, ...m };
+  o.notes = { ...d.notes, ...(m.notes || {}) };
+  o.timer = { ...d.timer, ...(m.timer || {}) };
+  if (!Array.isArray(o.subjects) || !o.subjects.length) o.subjects = d.subjects;
+  o.subjects = o.subjects.filter(s => s && s.id).map(s => ({ id: String(s.id), name: String(s.name || ''), code: String(s.code || '').slice(0, 4), color: String(s.color || '#B8C2D9') }));
+  if (!Array.isArray(o.unutma)) o.unutma = d.unutma.slice();
+  o.unutma = o.unutma.slice(0, 5); while (o.unutma.length < 5) o.unutma.push('');
+  if (!Array.isArray(o.countdowns)) o.countdowns = d.countdowns;
+  o.fs = [0.9, 1, 1.15, 1.3].includes(+o.fs) ? +o.fs : 1;
+  if (!Array.isArray(o.slots) || !o.slots.length) o.slots = makeSlots();
+  const okT = x => /^\d{2}:\d{2}$/.test(String(x || '')) ? String(x) : '';
+  o.slots = o.slots.slice(0, MAX_SLOTS).map(x => ({ s: okT(x && x.s), e: okT(x && x.e) }));
+  o.slotGen = { ...d.slotGen, ...(m.slotGen || {}) };
+  return o;
+}
+const blankWeek = () => ({ cells: {}, sessions: {}, goals: Array.from({ length: 5 }, () => ({ t: '', done: false })), stars: 0, review: '', updatedAt: 0 });
+function normWeek(w) {
+  const b = blankWeek(); w = w || {};
+  const o = { ...b, ...w };
+  o.cells = (w.cells && typeof w.cells === 'object') ? w.cells : {};
+  o.sessions = (w.sessions && typeof w.sessions === 'object' && !Array.isArray(w.sessions)) ? w.sessions : {};
+  if (!Array.isArray(o.goals)) o.goals = b.goals;
+  o.goals = o.goals.slice(0, 5).map(g => ({ t: String((g && g.t) || ''), done: !!(g && g.done) }));
+  while (o.goals.length < 5) o.goals.push({ t: '', done: false });
+  return o;
+}
+
+/* ================= durum ve kayıt ================= */
+const LS_KEY = 'simsekfc:v1', LS_TIMER = 'simsekfc:timer';
+const S = { meta: defaultMeta(), weeks: {} };
+const today0 = () => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); };
+let curWk = wkKey(mondayOf(new Date()));
+let activeDay = (new Date().getDay() + 6) % 7;
+
+function loadLocal() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return;
+    const o = JSON.parse(raw);
+    if (o && o.meta) S.meta = mergeMeta(o.meta);
+    if (o && o.weeks && typeof o.weeks === 'object') for (const k in o.weeks) if (/^w_\d{4}-\d{2}-\d{2}$/.test(k)) S.weeks[k] = normWeek(o.weeks[k]);
+  } catch (e) { /* tarayıcı depolaması yoksa sorun değil */ }
+}
+const saveLocal = debounce(() => { try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (e) {} }, 250);
+
+const cloud = { coll: null, ready: false, failed: false };
+const dirty = new Set(), inflight = new Set(), lastWritten = new Map(), deleted = new Set(), retried = new Set();
+let flushTimer = null;
+function getWeek(key, create) {
+  if (!S.weeks[key]) { if (!create) return blankWeek(); S.weeks[key] = blankWeek(); }
+  return S.weeks[key];
+}
+function touch(key) {
+  const now = Date.now();
+  if (key === 'meta') S.meta.updatedAt = now; else if (S.weeks[key]) S.weeks[key].updatedAt = now;
+  deleted.delete(key);
+  saveLocal(); dirty.add(key); scheduleFlush();
+}
+function scheduleFlush() { clearTimeout(flushTimer); flushTimer = setTimeout(flush, 700); }
+async function flush() {
+  if (!cloud.coll || !cloud.ready) return;
+  const keys = [...dirty];
+  if (keys.length) setSync('saving');
+  for (const key of keys) {
+    if (inflight.has(key)) continue;
+    dirty.delete(key);
+    const body = key === 'meta' ? S.meta : S.weeks[key];
+    if (!body) continue;
+    const json = JSON.stringify(body);
+    if (lastWritten.get(key) === json) continue;
+    inflight.add(key);
+    try {
+      await cloud.coll.doc(key).set(JSON.parse(json));
+      lastWritten.set(key, json); retried.delete(key);
+    } catch (e) {
+      const code = e && e.code;
+      if (code === 'unavailable' && !retried.has(key)) { retried.add(key); dirty.add(key); setTimeout(scheduleFlush, 1500 + Math.random() * 1500); }
+      else if (code === 'quota_exceeded') { toast('Bulut alanı doldu; veriler bu cihazda tutuluyor.'); setSync('err'); }
+      else if (code === 'invalid_argument' || code === 'revoked' || code === 'not_granted') { cloud.failed = true; cloud.coll = null; setSync('local'); }
+      else setSync('err');
+    } finally {
+      inflight.delete(key);
+    }
+  }
+  if (dirty.size && cloud.coll) scheduleFlush();
+  else if (cloud.coll && !inflight.size) setSync('cloud');
+}
+function setSync(s) {
+  const el = $('#sync'); if (!el) return;
+  el.dataset.s = s;
+  $('#syncT').textContent = { local: 'Bu cihazda', cloud: 'Bulutta', saving: 'Kaydediliyor…', err: 'Bulut yanıt vermiyor' }[s] || '';
+  el.title = { local: 'Veriler bu tarayıcıda saklanıyor', cloud: 'Tablet, telefon ve bilgisayarında aynı program', saving: 'Değişiklikler buluta yazılıyor', err: 'Değişiklikler bu cihazda duruyor, bağlantı gelince yazılır' }[s] || '';
+}
+function weekHasContent(w) { return !!w && (Object.keys(w.cells || {}).length > 0 || Object.keys(w.sessions || {}).length > 0 || w.goals.some(g => g.t.trim()) || w.stars > 0 || (w.review || '').trim()); }
+
+async function initCloud() {
+  try {
+    if (!window.claude || typeof window.claude.use !== 'function') return;
+    const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+    if (!db || !user) return;
+    const id = await user.id();
+    if (!id) return;
+    cloud.coll = db.collection('data/users/' + id);
+    cloud.coll.onSnapshot(onCloud, () => { cloud.coll = null; setSync('local'); });
+  } catch (e) { cloud.coll = null; setSync('local'); }
+}
+let pendingRender = false;
+function onCloud(snap) {
+  const first = !cloud.ready;
+  if (first) {
+    if (snap.metadata && snap.metadata.fromCache) return;   /* kesin cevabı bekle */
+    cloud.ready = true;
+  }
+  let changed = false;
+  const ids = new Set();
+  for (const d of snap.docs) {
+    if (!d.exists) continue;
+    const key = d.id; ids.add(key);
+    if (key !== 'meta' && !/^w_\d{4}-\d{2}-\d{2}$/.test(key)) continue;
+    if (deleted.has(key) || dirty.has(key) || inflight.has(key)) continue;
+    const body = d.data(); const json = JSON.stringify(body);
+    if (lastWritten.get(key) === json) continue;
+    const local = key === 'meta' ? S.meta : S.weeks[key];
+    if (local && JSON.stringify(local) === json) { lastWritten.set(key, json); continue; }
+    if (first && local && (local.updatedAt || 0) > ((body && body.updatedAt) || 0)) { dirty.add(key); continue; }
+    const c = JSON.parse(json);
+    if (key === 'meta') S.meta = mergeMeta(c); else S.weeks[key] = normWeek(c);
+    lastWritten.set(key, json); changed = true;
+  }
+  for (const k of [...deleted]) if (!ids.has(k)) deleted.delete(k);
+  if (first) {
+    if (!ids.has('meta') && S.meta.updatedAt) dirty.add('meta');
+    for (const k in S.weeks) if (!ids.has(k) && weekHasContent(S.weeks[k])) dirty.add(k);
+    setSync('cloud');
+    if (dirty.size) scheduleFlush();
+  }
+  if (changed) { try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (e) {} applyPrefs(); renderAll(); }
+}
+async function removeWeek(key) {
+  delete S.weeks[key]; dirty.delete(key); lastWritten.delete(key); deleted.add(key); saveLocal();
+  if (cloud.coll) { try { await cloud.coll.doc(key).delete(); } catch (e) {} }
+}
+
+/* ================= hücre verisi ================= */
+const slotKey = i => 's' + i;
+const emptyCell = () => ({ subs: [], text: '', done: false });
+const isEmptyCell = v => !v || (!(Array.isArray(v.subs) && v.subs.length) && !String(v.text || '').trim());
+function getCell(w, d, i) {
+  const c = w.cells && w.cells[d]; const v = c ? c[slotKey(i)] : undefined;
+  if (!v || typeof v !== 'object') return emptyCell();
+  return { subs: Array.isArray(v.subs) ? v.subs.slice() : [], text: String(v.text || ''), done: !!v.done };
+}
+function putCell(w, d, i, v) {
+  const k = slotKey(i);
+  if (isEmptyCell(v)) { if (w.cells[d]) { delete w.cells[d][k]; if (!Object.keys(w.cells[d]).length) delete w.cells[d]; } }
+  else (w.cells[d] || (w.cells[d] = {}))[k] = { subs: v.subs.slice(), text: v.text, done: !!v.done };
+}
+function setCell(key, d, i, v) { putCell(getWeek(key, true), d, i, v); touch(key); }
+const spanMin = (s, e) => { const a = toMin(s), b = toMin(e); if (a == null || b == null) return 0; let d = b - a; if (d < 0) d += 1440; return d; };
+const slotMin = i => { const s = S.meta.slots[i]; return s ? spanMin(s.s, s.e) : 0; };
+const subById = id => S.meta.subjects.find(s => s.id === id);
+const daySessions = (w, d) => (w.sessions && Array.isArray(w.sessions[d])) ? w.sessions[d] : [];
+function addSub(map, subs, m) { const list = subs && subs.length ? subs : ['_']; for (const k of list) map[k] = (map[k] || 0) + m / list.length; }
+function dayStats(w, d) {
+  let plan = 0, done = 0, lessons = 0, doneL = 0, free = 0; const bySub = {}, planSub = {};
+  S.meta.slots.forEach((_, i) => {
+    const v = getCell(w, d, i); if (isEmptyCell(v)) return;
+    const m = slotMin(i); lessons++; plan += m; addSub(planSub, v.subs, m);
+    if (v.done) { doneL++; done += m; addSub(bySub, v.subs, m); }
+  });
+  for (const ss of daySessions(w, d)) { const m = +ss.m || 0; done += m; free += m; addSub(bySub, ss.sub ? [ss.sub] : [], m); }
+  return { plan, done, lessons, doneL, free, bySub, planSub };
+}
+function weekStats(key) {
+  const w = S.weeks[key] || blankWeek(); const days = []; const bySub = {}, planSub = {};
+  let plan = 0, done = 0, lessons = 0, doneL = 0, free = 0;
+  for (let d = 0; d < 7; d++) {
+    const s = dayStats(w, d); days.push(s); plan += s.plan; done += s.done; lessons += s.lessons; doneL += s.doneL; free += s.free;
+    for (const k in s.bySub) bySub[k] = (bySub[k] || 0) + s.bySub[k];
+    for (const k in s.planSub) planSub[k] = (planSub[k] || 0) + s.planSub[k];
+  }
+  const set = w.goals.filter(g => g.t.trim());
+  return { days, plan, done, lessons, doneL, free, bySub, planSub, goalsSet: set.length, goalsDone: set.filter(g => g.done).length };
+}
+function doneOn(dt) { const w = S.weeks[wkKey(mondayOf(dt))]; return w ? dayStats(w, (dt.getDay() + 6) % 7).done : 0; }
+function streak() { let d = today0(), n = 0; if (!doneOn(d)) d = addDays(d, -1); while (n < 500 && doneOn(d) > 0) { n++; d = addDays(d, -1); } return n; }
+const todayIdx = key => key === wkKey(mondayOf(new Date())) ? (new Date().getDay() + 6) % 7 : -1;
+function nowSlot() {
+  const n = new Date(); const t = n.getHours() * 60 + n.getMinutes();
+  return S.meta.slots.findIndex(sl => { const a = toMin(sl.s), b = toMin(sl.e); if (a == null || b == null || a === b) return false; return a < b ? t >= a && t < b : t >= a || t < b; });
+}
+
+/* ================= tahta ================= */
+function subChip(id) { const s = subById(id); if (!s) return ''; return `<span class="sc" style="--c:${esc(s.color)}" title="${esc(s.name)}">${esc(upTR(s.code))}</span>`; }
+function cellBox(d, i, v, isToday, isNow) {
+  const empty = isEmptyCell(v); const sl = S.meta.slots[i] || { s: '', e: '' };
+  const s = !empty && v.subs.length ? subById(v.subs[0]) : null;
+  const cls = `cell${isToday ? ' today' : ''}${isNow ? ' now' : ''}${empty ? ' empty' : ''}${s ? ' has' : ''}${v.done ? ' done' : ''}`;
+  const lbl = `${DAYS[d]}, ${i + 1}. ders ${sl.s || ''}–${sl.e || ''}${empty ? ', boş, ders eklemek için aç' : (s ? ', ' + s.name : '') + ', düzenlemek için aç'}`;
+  const inner = empty ? `<span class="add">${ic('plus')}</span>`
+    : `<button type="button" class="tick ctick" data-act="done" data-d="${d}" data-i="${i}" aria-pressed="${v.done}" aria-label="${DAYS[d]} ${i + 1}. ders yapıldı">${ic('check')}</button>${v.subs.length ? `<div class="chips">${v.subs.map(subChip).join('')}</div>` : ''}${v.text ? `<div class="clamp">${nl2br(v.text)}</div>` : ''}`;
+  return `<div class="${cls}" role="button" tabindex="0" data-d="${d}" data-i="${i}"${s ? ` style="--c:${esc(s.color)}"` : ''} aria-label="${esc(lbl)}">${inner}</div>`;
+}
+function labHTML(i, pre, isNow) {
+  const sl = S.meta.slots[i]; const m = slotMin(i);
+  return `<div class="lab slot${isNow ? ' now' : ''}"><span class="sn">${i + 1}. DERS</span>
+    <label class="sr" for="${pre}s${i}">${i + 1}. ders başlangıç saati</label><input type="time" class="tin" id="${pre}s${i}" data-slot="${i}" data-k="s" value="${esc(sl.s)}">
+    <span class="to" aria-hidden="true">–</span>
+    <label class="sr" for="${pre}e${i}">${i + 1}. ders bitiş saati</label><input type="time" class="tin" id="${pre}e${i}" data-slot="${i}" data-k="e" value="${esc(sl.e)}">
+    <span class="du" data-du="${i}">${m ? fmtDur(m) : 'saat gir'}</span></div>`;
+}
+function renderBoard() {
+  const w = S.weeks[curWk] || blankWeek(); const mon = wkMon(curWk); const ti = todayIdx(curWk);
+  const ns = ti >= 0 ? nowSlot() : -1; const n = S.meta.slots.length;
+  let h = `<div class="gh corner">SAAT</div>`;
+  for (let d = 0; d < 7; d++) {
+    const dt = addDays(mon, d); const st = dayStats(w, d);
+    h += `<div class="gh${d === ti ? ' today' : ''}"><span>${DAYS[d]}</span>${ic(DAY_IC[d])}<span class="dd">${dt.getDate()} ${MONTHS[dt.getMonth()].slice(0, 3)}</span>${st.plan || st.done ? `<span class="dt" title="Yapılan / plan, saat">${fmtHrs(st.done)} / ${fmtHrs(st.plan)} sa</span>` : ''}</div>`;
+  }
+  for (let i = 0; i < n; i++) {
+    h += labHTML(i, 'g', ns === i);
+    for (let d = 0; d < 7; d++) h += cellBox(d, i, getCell(w, d, i), d === ti, d === ti && ns === i);
+  }
+  const g = $('#grid'); g.style.gridTemplateRows = `auto repeat(${n}, minmax(calc(74px * var(--fs)), 1fr))`; g.innerHTML = h;
+  let t = `<div class="dtabs" role="tablist" aria-label="Günler">`;
+  for (let d = 0; d < 7; d++) { const dt = addDays(mon, d); t += `<button type="button" class="dtab${d === ti ? ' today' : ''}" role="tab" aria-selected="${d === activeDay}" data-day="${d}">${DAYS_S[d]}<small>${dt.getDate()}</small></button>`; }
+  t += `</div><div class="dcol" role="tabpanel" aria-label="${DAYS[activeDay]}">`;
+  for (let i = 0; i < n; i++) t += `<div class="drow">${labHTML(i, 'v', activeDay === ti && ns === i)}${cellBox(activeDay, i, getCell(w, activeDay, i), activeDay === ti, activeDay === ti && ns === i)}</div>`;
+  $('#dayview').innerHTML = t + `</div>`;
+  $('#slotCount').textContent = n; $('#slotMinus').disabled = n <= 1; $('#slotPlus').disabled = n >= MAX_SLOTS;
+}
+function onBoardClick(e) {
+  if (e.target.closest('.lab')) return;
+  const tab = e.target.closest('.dtab');
+  if (tab) { activeDay = +tab.dataset.day; renderBoard(); const nb = $(`#dayview .dtab[data-day="${activeDay}"]`); if (nb) nb.focus(); return; }
+  const a = e.target.closest('[data-act="done"]');
+  if (a) { e.stopPropagation(); toggleDone(+a.dataset.d, +a.dataset.i, a); return; }
+  const c = e.target.closest('.cell');
+  if (c) openEditor(+c.dataset.d, +c.dataset.i);
+}
+function onBoardKey(e) {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('cell')) { e.preventDefault(); openEditor(+e.target.dataset.d, +e.target.dataset.i); }
+}
+function toggleDone(d, i, btn) {
+  const w = getWeek(curWk, true); const v = getCell(w, d, i); if (isEmptyCell(v)) return;
+  v.done = !v.done; putCell(w, d, i, v); touch(curWk);
+  if (v.done) burstAt(btn, 14);
+  const inDay = !!btn.closest('#dayview');
+  renderBoard(); renderScore();
+  const nb = $(`${inDay ? '#dayview' : '#grid'} [data-act="done"][data-d="${d}"][data-i="${i}"]`); if (nb) nb.focus();
+}
+function onSlotInput(e) {
+  const t = e.target; if (!t.classList || !t.classList.contains('tin')) return;
+  const i = +t.dataset.slot, k = t.dataset.k; if (!S.meta.slots[i]) return;
+  S.meta.slots[i][k] = t.value; touch('meta');
+  $$(`.tin[data-slot="${i}"][data-k="${k}"]`).forEach(x => { if (x !== t) x.value = t.value; });
+  const m = slotMin(i); $$(`[data-du="${i}"]`).forEach(x => { x.textContent = m ? fmtDur(m) : 'saat gir'; });
+  renderScore();
+}
+function onSlotBlur(e) {
+  if (!e.target.classList || !e.target.classList.contains('tin')) return;
+  if (e.relatedTarget && e.relatedTarget.classList && e.relatedTarget.classList.contains('tin')) return;
+  setTimeout(() => { const a = document.activeElement; if (!(a && a.classList && a.classList.contains('tin'))) renderBoard(); }, 60);
+}
+function addSlot() {
+  const sl = S.meta.slots; if (sl.length >= MAX_SLOTS) return;
+  const last = sl[sl.length - 1]; const len = last ? (spanMin(last.s, last.e) || 40) : 40;
+  const st = last && toMin(last.e) != null ? toMin(last.e) + (+S.meta.slotGen.brk || 0) : 480;
+  sl.push({ s: mm(st), e: mm(st + len) }); touch('meta'); renderBoard(); renderScore();
+}
+function removeSlot() {
+  if (S.meta.slots.length <= 1) return;
+  S.meta.slots.pop(); touch('meta'); renderBoard(); renderScore();
+  toast('Son ders saati kaldırıldı. O saatteki kayıtlar silinmedi; saati geri eklersen yine görünür.');
+}
+
+/* ================= üst bölüm, şerit, yan panel ================= */
+function crestSVG(name) {
+  const ring = upTR(`${name} • son düdüğe kadar • `);
+  let stripes = ''; for (let i = 0; i < 7; i++) stripes += `<rect x="${38 + i * 18}" y="38" width="9" height="124" fill="#FFFFFF" opacity=".07"/>`;
+  return `<svg class="crest-svg" viewBox="0 0 200 200" role="img" aria-label="${esc(name)} arması">
+    <defs>
+      <radialGradient id="crG1" cx="50%" cy="38%" r="68%"><stop offset="0" stop-color="#2A66FF"/><stop offset="1" stop-color="#061A55"/></radialGradient>
+      <linearGradient id="crG2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE65C"/><stop offset="1" stop-color="#FFB000"/></linearGradient>
+      <path id="crRing" d="M22,100 a78,78 0 1,1 156,0 a78,78 0 1,1 -156,0"/>
+      <clipPath id="crClip"><circle cx="100" cy="100" r="62"/></clipPath>
+    </defs>
+    <circle cx="100" cy="100" r="96" fill="#020B2A" stroke="url(#crG2)" stroke-width="4"/>
+    <circle cx="100" cy="100" r="88" fill="#0A2A7A" stroke="#FFD21F" stroke-opacity=".45" stroke-width="1.5"/>
+    <text class="crest-ring" dy="5" fill="#FFD21F" font-family="Barlow Condensed, Arial Narrow, sans-serif" font-weight="800" font-size="16" letter-spacing="2.4"><textPath href="#crRing" textLength="476" lengthAdjust="spacing">${esc(ring)}</textPath></text>
+    <g clip-path="url(#crClip)"><rect x="38" y="38" width="124" height="124" fill="url(#crG1)"/>${stripes}</g>
+    <circle cx="100" cy="100" r="62" fill="none" stroke="#FFD21F" stroke-width="3"/>
+    <path fill="#FFD21F" d="M64 95l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.6-4.8 2.6.9-5.4-3.9-3.8 5.4-.8zM136 95l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.6-4.8 2.6.9-5.4-3.9-3.8 5.4-.8z"/>
+    <path class="crest-bolt" d="M110 52 74 106h24l-9 44 39-58h-25l7-40z" fill="url(#crG2)" stroke="#FFFFFF" stroke-width="3.2" stroke-linejoin="round"/>
+  </svg>`;
+}
+function fitTitle() {
+  const el = $('#clubName'); if (!el) return;
+  el.style.fontSize = '';
+  let fs = parseFloat(getComputedStyle(el).fontSize); let guard = 0;
+  while (el.scrollWidth > el.clientWidth + 1 && fs > 18 && guard++ < 80) { fs -= 2; el.style.fontSize = fs + 'px'; }
+}
+function renderHeader() {
+  const name = S.meta.club || 'Şimşek FC';
+  $('#clubName').textContent = upTR(name);
+  $('#clubBoxName').textContent = upTR(name);
+  $('#bannerName').textContent = upTR(name);
+  $('#crest').innerHTML = crestSVG(name);
+  for (const el of $$('[data-note]')) if (document.activeElement !== el) el.textContent = S.meta.notes[el.dataset.note] || '';
+  requestAnimationFrame(fitTitle);
+}
+function renderScore() {
+  const st = weekStats(curWk);
+  $('#sbDone').textContent = fmtHrs(st.done);
+  $('#sbPlan').textContent = fmtHrs(st.plan);
+  $('#sbBar').style.width = (st.plan ? Math.min(100, st.done / st.plan * 100) : (st.done ? 100 : 0)) + '%';
+  const n = streak();
+  $('#sbStreak').innerHTML = `${ic('bolt')}${n} gün seri`;
+  $('#scoreboard').setAttribute('aria-label', `Hafta skoru: ${fmtDur(st.done)} yapıldı, ${fmtDur(st.plan)} planlandı, ${n} günlük seri. Maç raporunu aç.`);
+}
+function renderClock() {
+  const n = new Date();
+  $('#sbClock').textContent = hm(n);
+}
+function renderStrip() {
+  const mon = wkMon(curWk), sun = addDays(mon, 6);
+  const sameM = mon.getMonth() === sun.getMonth();
+  $('#wkLabel').textContent = sameM ? `${mon.getDate()}–${sun.getDate()} ${MONTHS[sun.getMonth()]} ${sun.getFullYear()}` : `${mon.getDate()} ${MONTHS[mon.getMonth()]} – ${sun.getDate()} ${MONTHS[sun.getMonth()]} ${sun.getFullYear()}`;
+  const diff = Math.round((mon - mondayOf(new Date())) / (7 * 864e5));
+  $('#wkTag').textContent = diff === 0 ? 'BU HAFTA' : diff === -1 ? 'GEÇEN HAFTA' : diff === 1 ? 'GELECEK HAFTA' : diff < 0 ? `${-diff} HAFTA ÖNCE` : `${diff} HAFTA SONRA`;
+  $('#todayW').hidden = diff === 0;
+  const t = today0();
+  $('#cds').innerHTML = S.meta.countdowns.filter(c => c.name && /^\d{4}-\d{2}-\d{2}$/.test(c.date)).map(c => {
+    const days = Math.round((parseYmd(c.date) - t) / 864e5);
+    return `<button type="button" class="cd" data-cd title="${esc(c.name)}: ${esc(c.date)}">${esc(upTR(c.name))} <b>${days > 0 ? days : days === 0 ? 'BUGÜN' : '✓'}</b>${days > 0 ? ' gün' : ''}</button>`;
+  }).join('');
+}
+function buildSide() {
+  $('#goalsH').innerHTML = `HAFTALIK HEDEFLERİM ${ic('megaphone')}`;
+  $('#unutmaH').innerHTML = `UNUTMA! ${ic('star')}`;
+  $('#goals').innerHTML = [0, 1, 2, 3, 4].map(i => `<li><span class="num">${i + 1}</span><label class="sr" for="goal-${i}">Haftalık hedef ${i + 1}</label><input class="line-in" id="goal-${i}" data-goal="${i}" placeholder="Hedef yaz…" autocomplete="off"><button type="button" class="tick" data-gtick="${i}" aria-pressed="false" aria-label="Hedef ${i + 1} tamamlandı">${ic('check')}</button></li>`).join('');
+  $('#unutma').innerHTML = [0, 1, 2, 3, 4].map(i => `<li><span style="color:${UNUTMA_IC[i][1]}">${ic(UNUTMA_IC[i][0])}</span><label class="sr" for="un-${i}">Unutma ${i + 1}</label><input class="line-in" id="un-${i}" data-un="${i}" autocomplete="off" placeholder="Hatırlatma"></li>`).join('');
+  $('#stars').innerHTML = [1, 2, 3, 4, 5].map(i => `<button type="button" class="star-b" data-star="${i}" aria-pressed="false" aria-label="${i} yıldız">${ic('star')}</button>`).join('');
+  $('#qPrev').innerHTML = ic('chevL'); $('#qNext').innerHTML = ic('chevR');
+}
+function renderSide() {
+  const w = S.weeks[curWk] || blankWeek();
+  w.goals.forEach((g, i) => {
+    const inp = $(`#goal-${i}`); if (document.activeElement !== inp) inp.value = g.t;
+    const b = $(`[data-gtick="${i}"]`); b.setAttribute('aria-pressed', String(!!g.done));
+    inp.closest('li').classList.toggle('done', !!g.done);
+  });
+  const set = w.goals.filter(g => g.t.trim()); const dn = set.filter(g => g.done).length;
+  $('#gprog').style.width = (set.length ? dn / set.length * 100 : 0) + '%';
+  S.meta.unutma.forEach((u, i) => { const inp = $(`#un-${i}`); if (document.activeElement !== inp) inp.value = u; });
+  $$('.star-b').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.star <= (w.stars || 0))));
+  const rv = $('#review'); if (document.activeElement !== rv) rv.value = w.review || '';
+}
+let qIdx = Math.floor(Math.random() * QUOTES.length);
+function allQuotes() { const own = String(S.meta.quotes || '').split('\n').map(s => s.trim()).filter(Boolean); return own.concat(QUOTES); }
+function renderQuote() {
+  const q = allQuotes(); qIdx = ((qIdx % q.length) + q.length) % q.length;
+  $('#qText').textContent = q[qIdx];
+  $('#qBy').textContent = `— ${upTR(S.meta.club || 'Şimşek FC')} soyunma odası`;
+}
+function applyPrefs() {
+  const app = $('#app');
+  app.style.setProperty('--fs', S.meta.fs || 1);
+  app.dataset.board = S.meta.board === 'night' ? 'night' : 'day';
+  const motion = S.meta.motion !== false && !prefersReduce.matches;
+  app.dataset.motion = motion ? 'on' : 'off';
+  $('#boardMode').innerHTML = ic(S.meta.board === 'night' ? 'sun' : 'moon');
+  $('#boardMode').setAttribute('aria-label', S.meta.board === 'night' ? 'Gündüz tahtasına geç' : 'Gece tahtasına geç');
+  fxSetRunning(motion);
+}
+function renderAll() { renderHeader(); renderStrip(); renderScore(); renderBoard(); renderSide(); renderQuote(); renderClock(); if (!$('#ov-report').hidden) renderReport(); }
+
+/* ================= düzenleyici ================= */
+let ED = null;
+const commitED = debounce(() => { if (!ED) return; setCell(ED.wk, ED.day, ED.slot, ED.val); renderBoard(); renderScore(); }, 180);
+function commitNow() { if (!ED) return; setCell(ED.wk, ED.day, ED.slot, ED.val); renderBoard(); renderScore(); }
+function openEditor(day, slot) {
+  ED = { wk: curWk, day, slot, val: getCell(getWeek(curWk, false), day, slot) };
+  buildEditor(); openOv('ov-ed');
+}
+function buildEditor() {
+  const sl = S.meta.slots[ED.slot] || { s: '', e: '' }; const dt = addDays(wkMon(ED.wk), ED.day); const v = ED.val; const n = S.meta.slots.length;
+  $('#edTitle').innerHTML = `${ic('clock')}<span>${ED.slot + 1}. ders · ${esc(sl.s || '--:--')}–${esc(sl.e || '--:--')}</span>`;
+  $('#edSub').textContent = `${DAYS[ED.day]} · ${dt.getDate()} ${MONTHS[dt.getMonth()]}`;
+  $('#edBody').innerHTML = `<div class="lbl">Ders <small>gerekirse birden fazla seçebilirsin</small></div>
+    <div class="pick" id="edSubs">${S.meta.subjects.map(s => `<button type="button" class="pk" data-sub="${esc(s.id)}" style="--c:${esc(s.color)}" aria-pressed="${v.subs.includes(s.id)}"><i></i><span>${esc(upTR(s.code))}<small>${esc(s.name)}</small></span></button>`).join('')}</div>
+    <label class="lbl" for="edText">Konu ve notlar</label><textarea id="edText" rows="4" placeholder="Örn: Türev, zincir kuralı; 20 soru">${esc(v.text)}</textarea>
+    <div class="set-row" style="margin-top:12px"><span>Bu ders yapıldı mı?</span><button type="button" class="btn sm${v.done ? ' gold' : ''}" id="edDone" aria-pressed="${v.done}">${ic('check')}${v.done ? 'Yapıldı' : 'Henüz değil'}</button></div>`;
+  $('#edPrev').innerHTML = `${ic('chevL')}<span class="lbl-t">${DAYS_S[(ED.day + 6) % 7]}</span>`;
+  $('#edNext').innerHTML = `<span class="lbl-t">${DAYS_S[(ED.day + 1) % 7]}</span>${ic('chevR')}`;
+  $('#edPrev').setAttribute('aria-label', 'Önceki gün: ' + DAYS[(ED.day + 6) % 7]);
+  $('#edNext').setAttribute('aria-label', 'Sonraki gün: ' + DAYS[(ED.day + 1) % 7]);
+  $('#edUp').innerHTML = `${ic('chevU')}<span class="lbl-t">${(ED.slot + n - 1) % n + 1}. ders</span>`; $('#edUp').setAttribute('aria-label', 'Önceki ders saati');
+  $('#edDown').innerHTML = `${ic('chevD')}<span class="lbl-t">${(ED.slot + 1) % n + 1}. ders</span>`; $('#edDown').setAttribute('aria-label', 'Sonraki ders saati');
+  $('#edCopyWd').innerHTML = `${ic('copy')}<span class="lbl-t">Hafta içi boşlara</span>`; $('#edCopyWd').setAttribute('aria-label', 'Aynı saatte hafta içindeki boş günlere kopyala');
+  $('#edCopyAll').innerHTML = `${ic('copy')}<span class="lbl-t">Tüm boş günlere</span>`; $('#edCopyAll').setAttribute('aria-label', 'Aynı saatte haftanın tüm boş günlerine kopyala');
+  $('#edClear').innerHTML = `${ic('eraser')}<span class="lbl-t">Temizle</span>`; $('#edClear').setAttribute('aria-label', 'Bu hücreyi temizle');
+}
+function wireEditor() {
+  const body = $('#edBody');
+  body.addEventListener('input', e => { if (ED && e.target.id === 'edText') { ED.val.text = e.target.value; commitED(); } });
+  body.addEventListener('click', e => {
+    if (!ED) return;
+    const pk = e.target.closest('.pk[data-sub]');
+    if (pk) { const id = pk.dataset.sub; const i = ED.val.subs.indexOf(id); if (i >= 0) ED.val.subs.splice(i, 1); else ED.val.subs.push(id); pk.setAttribute('aria-pressed', String(i < 0)); commitNow(); return; }
+    const dn = e.target.closest('#edDone');
+    if (dn) {
+      if (isEmptyCell(ED.val)) { toast('Önce bir ders seç ya da konu yaz.'); return; }
+      ED.val.done = !ED.val.done; if (ED.val.done) burstAt(dn, 14);
+      dn.setAttribute('aria-pressed', String(ED.val.done)); dn.classList.toggle('gold', ED.val.done);
+      dn.innerHTML = `${ic('check')}${ED.val.done ? 'Yapıldı' : 'Henüz değil'}`; commitNow();
+    }
+  });
+  const go = (dd, ds) => {
+    commitNow(); const n = S.meta.slots.length;
+    const nd = (ED.day + dd + 7) % 7, ns = (ED.slot + ds + n) % n;
+    ED = { wk: ED.wk, day: nd, slot: ns, val: getCell(getWeek(ED.wk, false), nd, ns) }; buildEditor();
+  };
+  $('#edPrev').addEventListener('click', () => go(-1, 0));
+  $('#edNext').addEventListener('click', () => go(1, 0));
+  $('#edUp').addEventListener('click', () => go(0, -1));
+  $('#edDown').addEventListener('click', () => go(0, 1));
+  $('#edClear').addEventListener('click', () => { ED.val = emptyCell(); commitNow(); buildEditor(); });
+  $('#edCopyWd').addEventListener('click', () => copyCellTo([0, 1, 2, 3, 4]));
+  $('#edCopyAll').addEventListener('click', () => copyCellTo([0, 1, 2, 3, 4, 5, 6]));
+}
+const freshCopy = v => ({ subs: v.subs.slice(), text: v.text, done: false });
+function copyCellTo(days) {
+  commitNow(); if (isEmptyCell(ED.val)) { toast('Kopyalanacak bir şey yok; önce ders seç.'); return; }
+  const w = getWeek(ED.wk, true); let n = 0;
+  for (const d of days) { if (d === ED.day || !isEmptyCell(getCell(w, d, ED.slot))) continue; putCell(w, d, ED.slot, freshCopy(ED.val)); n++; }
+  if (n) touch(ED.wk);
+  renderBoard(); renderScore();
+  toast(n ? `${ED.slot + 1}. ders saatinde ${n} güne kopyalandı. Dolu hücrelere dokunulmadı.` : 'Bu saatte kopyalanacak boş gün yoktu.');
+}
+const isTouch = () => window.matchMedia && matchMedia('(pointer: coarse)').matches;
+
+/* ================= katman yönetimi ================= */
+const ovStack = [];
+let lastFocus = null;
+function openOv(id) {
+  const ov = $('#' + id); if (!ov.hidden) return;
+  if (!ovStack.length) lastFocus = document.activeElement;
+  ov.hidden = false; ovStack.push(id);
+  const field = ov.querySelector('.pb textarea, .pb input[type="text"]');
+  const f = (field && !isTouch()) ? field : ov.querySelector('[data-close]');
+  setTimeout(() => { if (f) f.focus(); else ov.querySelector('.panel').focus(); }, 30);
+}
+function closeOv(id) {
+  const ov = $('#' + id); if (ov.hidden) return;
+  if (id === 'ov-ed') { commitNow(); ED = null; }
+  if (id === 'ov-coach') aiAbort();
+  ov.hidden = true; const i = ovStack.indexOf(id); if (i >= 0) ovStack.splice(i, 1);
+  if (!ovStack.length && lastFocus && document.contains(lastFocus)) lastFocus.focus();
+}
+function wireOverlays() {
+  $$('.ov').forEach(ov => {
+    ov.querySelector('.panel').tabIndex = -1;
+    ov.addEventListener('click', e => { if (e.target === ov && ov.id !== 'ov-confirm') closeOv(ov.id); if (e.target.closest('[data-close]')) closeOv(ov.id); });
+  });
+  $$('[data-close]').forEach(b => { if (!b.textContent.trim()) b.innerHTML = ic('x'); });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      if (!$('#moreMenu').hidden) { closeMenu(); return; }
+      const top = ovStack[ovStack.length - 1]; if (top) { if (top === 'ov-confirm') $('#cfNo').click(); else closeOv(top); }
+    }
+  });
+}
+function askConfirm(title, text, yes = 'Evet') {
+  return new Promise(res => {
+    $('#cfTitle').textContent = title; $('#cfText').textContent = text; $('#cfYes').textContent = yes;
+    const done = v => { $('#cfYes').onclick = $('#cfNo').onclick = null; closeOv('ov-confirm'); res(v); };
+    $('#cfYes').onclick = () => done(true); $('#cfNo').onclick = () => done(false);
+    openOv('ov-confirm'); setTimeout(() => $('#cfNo').focus(), 40);
+  });
+}
+let toastT;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 3400); }
+
+/* ================= efektler ================= */
+const FX = { c: null, ctx: null, w: 0, h: 0, parts: [], raf: 0, on: false };
+const TOP = { c: null, ctx: null, w: 0, h: 0, bits: [], raf: 0 };
+function sizeCanvas(o) { const dpr = Math.min(1.5, window.devicePixelRatio || 1); o.w = innerWidth; o.h = innerHeight; o.c.width = Math.round(o.w * dpr); o.c.height = Math.round(o.h * dpr); o.ctx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+function newPart(init) {
+  const r = Math.random();
+  return { x: Math.random() * FX.w, y: init ? Math.random() * FX.h : FX.h + 10, r: .6 + Math.random() * 1.9, vy: .12 + Math.random() * .42, vx: (Math.random() - .5) * .16,
+    a: .25 + Math.random() * .55, tw: Math.random() * 6.28, col: r < .5 ? '255,210,31' : r < .8 ? '110,160,255' : '255,255,255' };
+}
+function fxInit() {
+  FX.c = $('#fx'); FX.ctx = FX.c.getContext('2d'); TOP.c = $('#fxTop'); TOP.ctx = TOP.c.getContext('2d');
+  sizeCanvas(FX); sizeCanvas(TOP);
+  const n = innerWidth < 700 ? 28 : 48; for (let i = 0; i < n; i++) FX.parts.push(newPart(true));
+  addEventListener('resize', debounce(() => { sizeCanvas(FX); sizeCanvas(TOP); fitTitle(); }, 200));
+}
+function fxLoop() {
+  const { ctx, w, h } = FX; ctx.clearRect(0, 0, w, h); ctx.globalCompositeOperation = 'lighter';
+  for (const p of FX.parts) {
+    p.y -= p.vy; p.x += p.vx; p.tw += .03;
+    if (p.y < -10 || p.x < -10 || p.x > w + 10) Object.assign(p, newPart(false));
+    const a = p.a * (.6 + .4 * Math.sin(p.tw));
+    ctx.fillStyle = `rgba(${p.col},${a})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.283); ctx.fill();
+    if (p.r > 1.7) { ctx.fillStyle = `rgba(${p.col},${a * .14})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 4.5, 0, 6.283); ctx.fill(); }
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  FX.raf = requestAnimationFrame(fxLoop);
+}
+function fxSetRunning(on) {
+  FX.on = on; if (!FX.ctx) return;
+  cancelAnimationFrame(FX.raf); FX.raf = 0;
+  if (on && !document.hidden) FX.raf = requestAnimationFrame(fxLoop); else FX.ctx.clearRect(0, 0, FX.w, FX.h);
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden) { cancelAnimationFrame(FX.raf); FX.raf = 0; } else if (FX.on) fxSetRunning(true); });
+const motionOn = () => $('#app').dataset.motion === 'on';
+function burstAt(el, n = 16) {
+  if (!motionOn() || !TOP.ctx) return;
+  const r = el.getBoundingClientRect(); burst(r.left + r.width / 2, r.top + r.height / 2, n, 4);
+}
+function burst(x, y, n, sp) {
+  const cols = ['#FFD21F', '#FF2D55', '#5C8DFF', '#FFFFFF', '#19D27A'];
+  for (let i = 0; i < n; i++) { const a = Math.random() * 6.283, v = sp * (.4 + Math.random()); TOP.bits.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - sp * .6, s: 5 + Math.random() * 6, rot: Math.random() * 6, vr: (Math.random() - .5) * .3, life: 60 + Math.random() * 40, col: cols[i % cols.length] }); }
+  if (!TOP.raf) TOP.raf = requestAnimationFrame(topLoop);
+}
+function topLoop() {
+  const { ctx, w, h } = TOP; ctx.clearRect(0, 0, w, h);
+  for (let i = TOP.bits.length - 1; i >= 0; i--) {
+    const b = TOP.bits[i]; b.life--; b.x += b.vx; b.y += b.vy; b.vy += .14; b.vx *= .99; b.rot += b.vr;
+    if (b.life <= 0 || b.y > h + 20) { TOP.bits.splice(i, 1); continue; }
+    ctx.save(); ctx.globalAlpha = Math.min(1, b.life / 30); ctx.translate(b.x, b.y); ctx.rotate(b.rot); ctx.fillStyle = b.col; ctx.fillRect(-b.s / 2, -b.s / 4, b.s, b.s / 2); ctx.restore();
+  }
+  TOP.raf = TOP.bits.length ? requestAnimationFrame(topLoop) : 0;
+  if (!TOP.raf) ctx.clearRect(0, 0, w, h);
+}
+function celebrate(text = 'GOOOL!') {
+  if (!motionOn()) { toast(text); return; }
+  const g = $('#gol'); g.querySelector('span').textContent = text; g.hidden = false;
+  const s = g.querySelector('span'); s.style.animation = 'none'; void s.offsetWidth; s.style.animation = '';
+  for (let k = 0; k < 4; k++) setTimeout(() => burst(innerWidth * (.2 + .2 * k), innerHeight * .45, 34, 9), k * 160);
+  setTimeout(() => { g.hidden = true; }, 2300);
+}
+
+/* ================= ses ================= */
+let actx = null;
+function playSignal(n = 1) {
+  if (!S.meta.sound) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const t0 = actx.currentTime + .02;
+    for (let i = 0; i < n; i++) {
+      const st = t0 + i * .5; const long = n > 1 && i === n - 1; const dur = long ? .95 : .34;
+      const g = actx.createGain(); g.connect(actx.destination);
+      if (S.meta.tone === 'gong') {
+        [392, 784, 1176].forEach((f, k) => { const o = actx.createOscillator(); const gg = actx.createGain(); o.type = 'sine'; o.frequency.value = f; gg.gain.setValueAtTime(.0001, st); gg.gain.exponentialRampToValueAtTime([.32, .12, .05][k], st + .02); gg.gain.exponentialRampToValueAtTime(.0001, st + 1.6); o.connect(gg); gg.connect(actx.destination); o.start(st); o.stop(st + 1.7); });
+      } else {
+        const o = actx.createOscillator(), lfo = actx.createOscillator(), lg = actx.createGain();
+        o.type = 'sine'; o.frequency.value = 2600; lfo.frequency.value = 36; lg.gain.value = 140; lfo.connect(lg); lg.connect(o.frequency);
+        g.gain.setValueAtTime(.0001, st); g.gain.exponentialRampToValueAtTime(.2, st + .02); g.gain.setValueAtTime(.2, st + dur - .06); g.gain.exponentialRampToValueAtTime(.0001, st + dur);
+        o.connect(g); o.start(st); lfo.start(st); o.stop(st + dur + .03); lfo.stop(st + dur + .03);
+      }
+    }
+  } catch (e) {}
+  try { navigator.vibrate && navigator.vibrate(n > 1 ? [200, 120, 200, 120, 500] : [250]); } catch (e) {}
+}
+
+/* ================= Maç Saati ================= */
+const TM = { phase: 'idle', sub: '', idx: 1, acc: 0, runStart: null, len: 0, wallStart: null };
+let wakeLock = null;
+async function lockOn() { try { if (navigator.wakeLock && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch (e) { wakeLock = null; } }
+function lockOff() { try { wakeLock && wakeLock.release(); } catch (e) {} wakeLock = null; }
+const tmElapsed = () => TM.acc + (TM.runStart ? Date.now() - TM.runStart : 0);
+function saveTimer() { try { localStorage.setItem(LS_TIMER, JSON.stringify(TM)); } catch (e) {} }
+function restoreTimer() {
+  try { const o = JSON.parse(localStorage.getItem(LS_TIMER) || 'null'); if (o && o.phase && o.phase !== 'idle' && o.phase !== 'end') { Object.assign(TM, o); TM.wallStart = o.wallStart ? new Date(o.wallStart) : null; } } catch (e) {}
+  if ((TM.phase === 'play' || TM.phase === 'break') && tmElapsed() - TM.len > 5 * 60000) {
+    if (TM.phase === 'play') logHalf(TM.len);
+    Object.assign(TM, { phase: 'idle', acc: 0, runStart: null, len: 0, idx: 1, wallStart: null }); saveTimer();
+  }
+}
+function tmStart() {
+  const t = S.meta.timer; Object.assign(TM, { phase: 'play', idx: 1, acc: 0, runStart: Date.now(), len: t.half * 60000, wallStart: new Date() });
+  playSignal(1); flashMsg('BAŞLAMA DÜDÜĞÜ'); lockOn(); saveTimer(); renderTimer();
+}
+function tmPause() { TM.acc = tmElapsed(); TM.runStart = null; lockOff(); saveTimer(); renderTimer(); }
+function tmResume() { TM.runStart = Date.now(); lockOn(); saveTimer(); renderTimer(); }
+function logHalf(ms) {
+  const mins = Math.round(ms / 60000); if (mins < 1 || !TM.wallStart) return;
+  const start = new Date(TM.wallStart); const end = new Date(start.getTime() + ms);
+  const key = wkKey(mondayOf(start)); const d = (start.getDay() + 6) % 7; const w = getWeek(key, true);
+  const a = start.getHours() * 60 + start.getMinutes(); const b = a + mins;
+  let hit = -1;
+  if (TM.sub) hit = S.meta.slots.findIndex((sl, i) => {
+    const v = getCell(w, d, i); const x = toMin(sl.s), y = toMin(sl.e);
+    if (isEmptyCell(v) || v.done || x == null || y == null || !v.subs.includes(TM.sub)) return false;
+    const y2 = y < x ? y + 1440 : y; return a < y2 && b > x;
+  });
+  const s = subById(TM.sub);
+  if (hit >= 0) { const v = getCell(w, d, hit); v.done = true; putCell(w, d, hit, v); toast(`${TM.idx}. devre bitti: ${hit + 1}. ders${s ? ' (' + upTR(s.code) + ')' : ''} yapıldı olarak işaretlendi.`); }
+  else {
+    if (!w.sessions || typeof w.sessions !== 'object') w.sessions = {};
+    (w.sessions[d] || (w.sessions[d] = [])).push({ id: rid(), s: hm(start), e: hm(end), sub: TM.sub || '', m: mins });
+    toast(`${TM.idx}. devre kayda geçti: ${fmtDur(mins)}${s ? ' ' + upTR(s.code) : ''}.`);
+  }
+  touch(key); if (key === curWk) renderBoard(); renderScore();
+}
+function tmPhaseDone() {
+  const t = S.meta.timer;
+  if (TM.phase === 'play') {
+    logHalf(TM.len);
+    if (TM.idx < t.halves) { Object.assign(TM, { phase: 'break', acc: 0, runStart: Date.now(), len: t.brk * 60000 }); playSignal(2); flashMsg('DEVRE ARASI'); }
+    else { Object.assign(TM, { phase: 'end', acc: 0, runStart: null, len: 0 }); playSignal(3); lockOff(); flashMsg('MAÇ BİTTİ'); celebrate('MAÇ BİTTİ!'); }
+  } else if (TM.phase === 'break') {
+    Object.assign(TM, { phase: 'play', idx: TM.idx + 1, acc: 0, runStart: Date.now(), len: t.half * 60000, wallStart: new Date() }); playSignal(1); flashMsg(`${TM.idx}. DEVRE`);
+  }
+  saveTimer(); renderTimer();
+}
+function tmFinish() {
+  if (TM.phase === 'play') { const el = tmElapsed(); if (el >= 60000) logHalf(el); }
+  Object.assign(TM, { phase: 'idle', acc: 0, runStart: null, len: 0, idx: 1, wallStart: null });
+  lockOff(); saveTimer(); renderTimer();
+}
+function flashMsg(t) { const host = $('#tmFlashHost'); if (!host || $('#ov-timer').hidden) { toast(t); return; } host.innerHTML = `<div class="whistle-flash">${esc(t)}</div>`; setTimeout(() => { host.innerHTML = ''; }, 2500); }
+function segHTML(vals, cur, unit) { return vals.map(v => `<button type="button" data-v="${v}" aria-pressed="${v === cur}">${v}${unit}</button>`).join(''); }
+function buildTimerStatic() {
+  $('#tmTitle').innerHTML = `${ic('stopwatch')}MAÇ SAATİ`;
+  const t = S.meta.timer;
+  $('#tmHalf').innerHTML = segHTML([15, 25, 45, 50, 60], t.half, ' dk');
+  $('#tmBrk').innerHTML = segHTML([5, 10, 15], t.brk, ' dk');
+  $('#tmN').innerHTML = segHTML([1, 2, 3, 4], t.halves, '');
+  $('#tmSubs').innerHTML = `<button type="button" class="pk" data-tsub="" style="--c:#B8C2D9" aria-pressed="${!TM.sub}"><i></i><span>SERBEST<small>Ders seçmeden</small></span></button>` +
+    S.meta.subjects.map(s => `<button type="button" class="pk" data-tsub="${esc(s.id)}" style="--c:${esc(s.color)}" aria-pressed="${TM.sub === s.id}"><i></i><span>${esc(upTR(s.code))}<small>${esc(s.name)}</small></span></button>`).join('');
+}
+function renderTimer() {
+  const t = S.meta.timer; const el = tmElapsed(); const running = TM.phase === 'play' || TM.phase === 'break';
+  const len = running ? TM.len : t.half * 60000; const rem = running ? Math.max(0, TM.len - el) : (TM.phase === 'end' ? 0 : len);
+  const mm = Math.floor(rem / 60000), ss = Math.floor((rem % 60000) / 1000);
+  const timeTxt = `${pad(mm)}:${pad(ss)}`;
+  const phaseTxt = TM.phase === 'play' ? `${TM.idx}. DEVRE` : TM.phase === 'break' ? 'DEVRE ARASI' : TM.phase === 'end' ? 'MAÇ SONU' : 'HAZIR';
+  const pill = $('#tmPill');
+  pill.hidden = !running; if (running) { $('#tmPillP').textContent = phaseTxt + (TM.runStart ? '' : ' · DURDU'); $('#tmPillT').textContent = timeTxt; }
+  if ($('#ov-timer').hidden) return;
+  $('#tmPhase').textContent = phaseTxt + (running && !TM.runStart ? ' · DURAKLATILDI' : '');
+  $('#tmBig').textContent = timeTxt;
+  const matchMin = TM.phase === 'play' ? (TM.idx - 1) * t.half + Math.floor(el / 60000) + 1 : TM.phase === 'break' ? TM.idx * t.half : TM.phase === 'end' ? t.halves * t.half : 0;
+  $('#tmMin').textContent = `${matchMin}'`;
+  const s = subById(TM.sub); $('#tmSub').textContent = s ? s.name : 'Serbest çalışma';
+  const C = 339.3; const frac = running ? Math.min(1, el / TM.len) : TM.phase === 'end' ? 1 : 0;
+  const ring = $('#tmRing'); ring.style.strokeDashoffset = String(C * (1 - frac)); ring.classList.toggle('brk', TM.phase === 'break');
+  const ctl = TM.phase === 'idle' || TM.phase === 'end'
+    ? `<button type="button" class="btn gold" data-tm="start">${ic('play')}${TM.phase === 'end' ? 'Yeni maç' : 'Başlama düdüğü'}</button>`
+    : `${TM.runStart ? `<button type="button" class="btn" data-tm="pause">${ic('pause')}Duraklat</button>` : `<button type="button" class="btn gold" data-tm="resume">${ic('play')}Devam</button>`}
+       ${TM.phase === 'break' ? `<button type="button" class="btn" data-tm="skip">${ic('chevR')}Arayı atla</button>` : ''}
+       <button type="button" class="btn red" data-tm="finish">${ic('flag')}Maçı bitir</button>`;
+  if ($('#tmCtl').dataset.sig !== TM.phase + (!!TM.runStart)) { $('#tmCtl').innerHTML = ctl; $('#tmCtl').dataset.sig = TM.phase + (!!TM.runStart); }
+  const td = doneOn(today0()); $('#tmToday').textContent = `Bugün sahada: ${fmtDur(td)}. Biten devre, o saatte aynı derse ayrılmış hücreyi "yapıldı" yapar; denk gelen ders yoksa serbest devre olarak skora yazılır.`;
+}
+function wireTimer() {
+  $('#tmCtl').addEventListener('click', e => {
+    const b = e.target.closest('[data-tm]'); if (!b) return;
+    const a = b.dataset.tm;
+    if (a === 'start') tmStart(); else if (a === 'pause') tmPause(); else if (a === 'resume') tmResume();
+    else if (a === 'skip') { TM.acc = TM.len; TM.runStart = TM.runStart || Date.now(); tmPhaseDone(); }
+    else if (a === 'finish') tmFinish();
+  });
+  const seg = (id, key) => $(id).addEventListener('click', e => {
+    const b = e.target.closest('button[data-v]'); if (!b) return;
+    S.meta.timer[key] = +b.dataset.v; touch('meta');
+    $$(id + ' button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    if (TM.phase === 'idle' || TM.phase === 'end') renderTimer();
+  });
+  seg('#tmHalf', 'half'); seg('#tmBrk', 'brk'); seg('#tmN', 'halves');
+  $('#tmSubs').addEventListener('click', e => {
+    const b = e.target.closest('[data-tsub]'); if (!b) return;
+    TM.sub = b.dataset.tsub; saveTimer();
+    $$('#tmSubs .pk').forEach(x => x.setAttribute('aria-pressed', String(x === b))); renderTimer();
+  });
+  $('#tmPill').addEventListener('click', openTimer);
+}
+function openTimer() { buildTimerStatic(); $('#tmCtl').dataset.sig = ''; openOv('ov-timer'); renderTimer(); }
+
+/* ================= Maç Raporu ================= */
+function niceScale(maxH) { const steps = [.5, 1, 2, 3, 4, 5, 10, 20, 50]; for (const st of steps) { const top = Math.max(st, Math.ceil(maxH / st) * st); if (top / st <= 5) return { top, step: st }; } return { top: Math.ceil(maxH / 100) * 100, step: 100 }; }
+const fmtTick = v => v.toLocaleString('tr-TR', { maximumFractionDigits: 1 });
+function barPath(x, yTop, w, h) { if (h < .6) return ''; const r = Math.min(4, h, w / 2); return `M${x},${yTop + h}V${yTop + r}Q${x},${yTop} ${x + r},${yTop}H${x + w - r}Q${x + w},${yTop} ${x + w},${yTop + r}V${yTop + h}Z`; }
+function barChart(days) {
+  const W = 680, H = 260, L = 46, R = 10, T = 14, B = 34, iw = W - L - R, ih = H - T - B;
+  const maxH = Math.max(.5, ...days.map(x => Math.max(x.plan, x.done) / 60));
+  const { top, step } = niceScale(maxH); const y = v => T + ih - (v / top) * ih;
+  const gw = iw / 7, bw = Math.min(26, (gw - 16) / 2);
+  let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Günlük plan ve yapılan çalışma saatleri">`;
+  for (let v = 0; v <= top + 1e-9; v += step) s += `<line class="gl" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${fmtTick(v)} sa</text>`;
+  days.forEach((d, i) => {
+    const cx = L + gw * i + gw / 2; const ph = d.plan / 60, dh = d.done / 60;
+    s += `<path class="b-plan" d="${barPath(cx - bw - 1, y(ph), bw, ih * ph / top)}"/><path class="b-done" d="${barPath(cx + 1, y(dh), bw, ih * dh / top)}"/>`;
+    s += `<text class="ax" x="${cx}" y="${H - 12}" text-anchor="middle">${DAYS_S[i]}</text>`;
+  });
+  s += `<line class="bl" x1="${L}" x2="${W - R}" y1="${T + ih}" y2="${T + ih}"/>`;
+  days.forEach((d, i) => { s += `<rect class="hit" x="${L + gw * i}" y="${T}" width="${gw}" height="${ih}" data-i="${i}"/>`; });
+  return s + '</svg>';
+}
+function lineChart(pts) {
+  const W = 1000, H = 240, L = 50, R = 18, T = 14, B = 34, iw = W - L - R, ih = H - T - B;
+  const maxH = Math.max(.5, ...pts.map(p => p.v));
+  const { top, step } = niceScale(maxH); const y = v => T + ih - (v / top) * ih; const x = i => L + (pts.length > 1 ? iw * i / (pts.length - 1) : iw / 2);
+  let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Son ${pts.length} haftanın çalışma saatleri">`;
+  for (let v = 0; v <= top + 1e-9; v += step) s += `<line class="gl" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${fmtTick(v)} sa</text>`;
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join('');
+  s += `<path class="ar" d="${line}L${x(pts.length - 1)},${T + ih}L${x(0)},${T + ih}Z"/><path class="ln" d="${line}"/>`;
+  s += `<line class="xh" id="xh" x1="0" x2="0" y1="${T}" y2="${T + ih}" visibility="hidden"/>`;
+  pts.forEach((p, i) => { s += `<circle class="pt" cx="${x(i)}" cy="${y(p.v)}" r="${i === pts.length - 1 ? 5.5 : 4}"/><text class="ax" x="${x(i)}" y="${H - 12}" text-anchor="middle">${esc(p.lbl)}</text>`; });
+  s += `<line class="bl" x1="${L}" x2="${W - R}" y1="${T + ih}" y2="${T + ih}"/>`;
+  pts.forEach((p, i) => { const x0 = i ? (x(i - 1) + x(i)) / 2 : L, x1 = i < pts.length - 1 ? (x(i) + x(i + 1)) / 2 : W - R; s += `<rect class="hit" x="${x0}" y="${T}" width="${x1 - x0}" height="${ih}" data-i="${i}" data-x="${x(i)}"/>`; });
+  return s + '</svg>';
+}
+function attachTip(card, content) {
+  const tip = document.createElement('div'); tip.className = 'tip'; tip.hidden = true; card.appendChild(tip);
+  const svg = card.querySelector('svg.chart'); const xh = card.querySelector('#xh');
+  const show = (e, rect) => {
+    const i = +rect.dataset.i; tip.innerHTML = content(i); tip.hidden = false;
+    const cr = card.getBoundingClientRect(); const px = (e.clientX ?? (rect.getBoundingClientRect().left + 10)) - cr.left; const py = (e.clientY ?? rect.getBoundingClientRect().top) - cr.top;
+    const tw = tip.offsetWidth; tip.style.left = Math.max(6, Math.min(cr.width - tw - 6, px + 14)) + 'px'; tip.style.top = Math.max(6, py - 54) + 'px';
+    if (xh && rect.dataset.x) { xh.setAttribute('x1', rect.dataset.x); xh.setAttribute('x2', rect.dataset.x); xh.setAttribute('visibility', 'visible'); }
+  };
+  svg.addEventListener('pointermove', e => { const r = e.target.closest('.hit'); if (r) show(e, r); });
+  svg.addEventListener('pointerleave', () => { tip.hidden = true; if (xh) xh.setAttribute('visibility', 'hidden'); });
+}
+function renderReport() {
+  const st = weekStats(curWk); const mon = wkMon(curWk); const w = S.weeks[curWk] || blankWeek();
+  $('#rpTitle').innerHTML = `${ic('chart')}MAÇ RAPORU <span style="color:var(--txt-2);font-size:.75em;letter-spacing:.04em">${esc($('#wkLabel').textContent)}</span>`;
+  const pct = st.plan ? Math.round(st.done / st.plan * 100) : null;
+  const subs = Object.entries(st.bySub).sort((a, b) => b[1] - a[1]);
+  const maxSub = subs.length ? subs[0][1] : 1;
+  const unplayed = S.meta.subjects.filter(s => (st.planSub[s.id] || 0) > 0 && !(st.bySub[s.id] > 0));
+  const best = st.days.reduce((bi, d, i, a) => d.done > a[bi].done ? i : bi, 0);
+  const trend = []; for (let k = 7; k >= 0; k--) { const m = addDays(mon, -7 * k); const ws = weekStats(wkKey(m)); trend.push({ v: ws.done / 60, lbl: `${m.getDate()} ${MONTHS[m.getMonth()].slice(0, 3)}`, m: ws.done }); }
+  let sum = '';
+  if (!st.plan && !st.done) sum = 'Bu hafta tahtaya henüz ders yerleştirilmedi. Bir hücreye ders ekle ya da Maç Saati ile ilk devreyi oyna; skor buradan dolmaya başlar.';
+  else {
+    sum = `Bu hafta ${st.lessons} ders saati planladın (${fmtDur(st.plan)}), ${st.doneL} tanesini yaptın; sahada toplam ${fmtDur(st.done)} geçirdin${pct != null ? ` (%${pct})` : ''}.`;
+    if (st.days[best].done) sum += ` En verimli gün ${DAYS[best]} oldu: ${fmtDur(st.days[best].done)}.`;
+    if (subs.length) { const s = subById(subs[0][0]); sum += ` En çok ${s ? s.name : 'ders seçilmemiş çalışma'} çalıştın (${fmtDur(subs[0][1])}).`; }
+    if (unplayed.length) sum += ` Plana alıp hiç çalışmadıkların: ${unplayed.map(s => s.name).join(', ')}.`;
+    if (st.goalsSet) sum += ` Haftalık hedeflerin ${st.goalsSet} hedefin ${st.goalsDone} tanesi tamam.`;
+  }
+  const sess = []; for (let d = 0; d < 7; d++) daySessions(w, d).forEach(ss => sess.push({ d, ss }));
+  $('#rpBody').innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="k">Sahada</div><div class="v">${fmtHrs(st.done)} <small>sa</small></div><div class="s">${st.days.filter(d => d.done > 0).length} gün sahaya çıkıldı</div></div>
+      <div class="kpi"><div class="k">Plan</div><div class="v">${fmtHrs(st.plan)} <small>sa</small></div><div class="s">${pct != null ? `%${pct} gerçekleşti` : 'plan girilmedi'}</div></div>
+      <div class="kpi"><div class="k">Ders saati</div><div class="v">${st.doneL}<small> / ${st.lessons}</small></div><div class="s">${st.lessons ? `%${Math.round(st.doneL / st.lessons * 100)} yapıldı` : 'ders yerleştirilmedi'}</div></div>
+      <div class="kpi"><div class="k">Haftalık hedef</div><div class="v">${st.goalsDone}<small> / ${st.goalsSet}</small></div><div class="s">${st.goalsSet ? 'hedef işaretlendi' : 'hedef yazılmadı'}</div></div>
+      <div class="kpi"><div class="k">Seri</div><div class="v">${streak()} <small>gün</small></div><div class="s">arka arkaya çalışılan gün</div></div>
+      <div class="kpi"><div class="k">Serbest devre</div><div class="v">${fmtHrs(st.free)} <small>sa</small></div><div class="s">tahtadaki derse denk gelmeyen Maç Saati</div></div>
+    </div>
+    <p class="summary">${esc(sum)}</p>
+    <div class="charts">
+      <div class="chartcard" id="ccDays"><h3>Gün gün plan ve sahada geçen süre</h3>
+        <div class="legend"><span style="--c:var(--plan)"><i></i>Plan</span><span style="--c:var(--done)"><i></i>Yapılan</span></div>${barChart(st.days)}</div>
+      <div class="chartcard"><h3>Ders bazında yapılan</h3>
+        ${subs.length ? `<div class="sbars">${subs.map(([id, m]) => { const s = subById(id); const c = s ? s.color : '#B8C2D9'; return `<div class="sbar" style="--c:${esc(c)}"><span class="n">${esc(s ? upTR(s.code) : 'DİĞER')}</span><span class="t"><i style="width:${(m / maxSub * 100).toFixed(1)}%"></i></span><span class="v">${fmtDur(m)}</span></div>`; }).join('')}</div>` : `<p class="hint" style="margin:6px 0 0">Yapıldı olarak işaretlenen ders olunca dersler burada sıralanır.</p>`}
+      </div>
+    </div>
+    <div class="chartcard" id="ccTrend" style="margin-top:14px"><h3>Son 8 hafta, sahada geçen saat</h3>${lineChart(trend)}</div>
+    ${sess.length ? `<div class="chartcard" style="margin-top:14px"><h3>Serbest devreler</h3><p class="hint" style="margin:0 0 6px">Maç Saati'nde oynanıp tahtadaki bir derse denk gelmeyen devreler. Yanlış kaydı silebilirsin.</p>
+      ${sess.map(({ d, ss }) => { const s = subById(ss.sub); return `<div class="trow"><span style="flex:1">${DAYS[d]} · ${esc(ss.s)}–${esc(ss.e)} · ${esc(s ? s.name : 'Serbest')} · <b>${fmtDur(ss.m)}</b></span><button type="button" class="ed-del" data-dels="${d}:${esc(ss.id || '')}" aria-label="Bu kaydı sil">${ic('trash')}</button></div>`; }).join('')}</div>` : ''}
+    <details class="tbl-toggle"><summary class="btn sm ghost" style="list-style:none;display:inline-flex">${ic('table')}Tablo olarak gör</summary>
+      <div class="tablewrap"><table class="dtable"><thead><tr><th>Gün</th><th>Plan</th><th>Yapılan</th><th>Ders saati</th></tr></thead><tbody>
+      ${st.days.map((d, i) => `<tr><td>${DAYS[i]}</td><td>${fmtDur(d.plan)}</td><td>${fmtDur(d.done)}</td><td>${d.doneL}/${d.lessons}</td></tr>`).join('')}
+      </tbody></table></div></details>`;
+  attachTip($('#ccDays'), i => `<b>${DAYS[i]}</b><div class="r"><i style="--c:var(--plan)"></i>Plan ${fmtDur(st.days[i].plan)}</div><div class="r"><i style="--c:var(--done)"></i>Yapılan ${fmtDur(st.days[i].done)}</div>`);
+  attachTip($('#ccTrend'), i => `<b>${esc(trend[i].lbl)} haftası</b><div class="r"><i style="--c:var(--done)"></i>${fmtDur(trend[i].m)}</div>`);
+}
+async function deleteSession(tok) {
+  const [d, id] = tok.split(':'); const w = S.weeks[curWk]; if (!w || !w.sessions || !w.sessions[d]) return;
+  if (!(await askConfirm('Kayıt silinsin mi?', 'Bu serbest devre skordan düşülür.', 'Sil'))) return;
+  w.sessions[d] = w.sessions[d].filter(x => (x.id || '') !== id); if (!w.sessions[d].length) delete w.sessions[d];
+  touch(curWk); renderReport(); renderBoard(); renderScore();
+}
+
+
+/* ================= Teknik Direktör (Claude) ================= */
+let sampleFn = null, aiCtl = null, aiBusy = false;
+async function initSample() {
+  try { sampleFn = (window.claude && typeof window.claude.use === 'function') ? await window.claude.use('sample') : null; } catch (e) { sampleFn = null; }
+  $('#coBody').classList.toggle('noai', !sampleFn);
+}
+$('#coBody') && $('#coBody').classList.add('noai');
+function weekDigest(key) {
+  const w = S.weeks[key] || blankWeek(); const mon = wkMon(key); const st = weekStats(key); const ti = todayIdx(key);
+  const sn = id => { const s = subById(id); return s ? s.code : ''; };
+  let t = `Hafta: ${$('#wkLabel').textContent}${ti >= 0 ? ` (bugün ${DAYS[ti]})` : ''}\n`;
+  t += `Dersler (kimlik/kod = ad): ${S.meta.subjects.map(s => `${s.id}/${s.code} = ${s.name}`).join('; ')}\n`;
+  t += `Ders saatleri: ${S.meta.slots.map((sl, i) => `${i + 1}) ${sl.s}-${sl.e}`).join(', ')}\n`;
+  t += `Haftalık hedefler: ${w.goals.filter(g => g.t.trim()).map((g, i) => `${i + 1}) ${g.t}${g.done ? ' [tamam]' : ' [açık]'}`).join(' ') || 'yazılmamış'}\n`;
+  for (let d = 0; d < 7; d++) {
+    const dt = addDays(mon, d); const parts = [];
+    S.meta.slots.forEach((sl, i) => { const v = getCell(w, d, i); if (isEmptyCell(v)) return; parts.push(`${i + 1}. ders ${sl.s}-${sl.e}: ${v.subs.map(sn).join('+') || 'ders seçilmemiş'}${v.text ? ' (' + v.text.replace(/\n/g, '; ') + ')' : ''}${v.done ? ' [yapıldı]' : ''}`); });
+    daySessions(w, d).forEach(ss => parts.push(`Maç Saati ${ss.s}-${ss.e} ${sn(ss.sub) || 'serbest'} ${ss.m} dk`));
+    t += `- ${DAYS[d]} ${dt.getDate()} ${MONTHS[dt.getMonth()]}: ${parts.length ? parts.join(' | ') : 'boş'}\n`;
+  }
+  t += `Toplam: plan ${fmtDur(st.plan)} (${st.lessons} ders saati), yapılan ${fmtDur(st.done)} (${st.doneL} ders saati). Yıldız: ${w.stars || 0}/5. Değerlendirme notu: ${w.review || '-'}\n`;
+  if (S.meta.constraints.trim()) t += `Öğrencinin kendi kısıtları: ${S.meta.constraints.trim()}\n`;
+  const cds = S.meta.countdowns.filter(c => c.name && c.date).map(c => `${c.name} ${c.date}`); if (cds.length) t += `Sınav tarihleri: ${cds.join(', ')}\n`;
+  return t;
+}
+const COACH = 'Sen futbol teknik direktörü gibi konuşan, öğrencisine dürüst ve doğrudan geri bildirim veren bir ders çalışma koçusun. Öğrenci IB Diploma ve YKS\'ye hazırlanıyor. Övgüyü yalnızca hak edilen yerde, kısa kullan; abartma. Hataları yumuşatmadan söyle ama aşağılama. Futbol benzetmelerini ölçülü kullan. Türkçe yaz; madde işareti, başlık, kalın yazı ya da emoji kullanma, akıcı düzyazıyla yaz.';
+function aiErr(e) {
+  const c = e && e.code;
+  return ({ not_granted: 'İzin verilmediği için teknik direktör bu görünümde konuşamıyor.', sampling_disabled: 'Bu hesapta Claude bu sayfadan kullanılamıyor.', rate_limited: 'Çok sık istek gitti ya da kullanım sınırına gelindi. Biraz sonra yeniden dene.', session_expired: 'Oturum düşmüş; Claude\'a yeniden giriş yapman gerekiyor.', refused: 'Bu istek yanıtlanmadı. Soruyu farklı kur.', invalid_json: 'Plan önerisi okunamadı. Bir kez daha dene.', empty_completion: 'Boş yanıt geldi. Biraz daha sade sor.', prompt_too_large: 'Gönderilen veri çok uzun.' })[c] || 'Bağlantı koptu. Bir kez daha dene.';
+}
+function aiAbort() { if (aiCtl) { aiCtl.abort(); aiCtl = null; } }
+function aiSetBusy(b) { aiBusy = b; ['#aiEval', '#aiPlan', '#aiAskBtn'].forEach(s => { $(s).disabled = b; }); $('#aiStopRow').hidden = !b; }
+async function aiRun(prompt, asJson) {
+  if (!sampleFn || aiBusy) return null;
+  const out = $('#aiOut'); out.classList.remove('idle'); out.textContent = 'Teknik direktör düşünüyor…'; $('#aiSug').innerHTML = '';
+  aiCtl = new AbortController(); aiSetBusy(true);
+  try {
+    if (asJson) { const r = await sampleFn.json(prompt, { signal: aiCtl.signal }); return r; }
+    const r = await sampleFn(prompt, { signal: aiCtl.signal, onText: ({ text }) => { out.textContent = text; } });
+    out.textContent = r.text + (r.truncated ? '\n\n(Yanıt yarıda kesildi.)' : ''); return r;
+  } catch (e) {
+    if (e && e.code === 'cancelled') { out.textContent = (e.text || '') + (e.text ? '\n\n(Durduruldu.)' : 'Durduruldu.'); }
+    else { out.textContent = (e && e.text && e.code !== 'refused' ? e.text + '\n\n' : '') + aiErr(e); if (e && ['not_granted', 'sampling_disabled', 'capability_disabled', 'capability_removed', 'not_declared'].includes(e.code)) { sampleFn = null; $('#coBody').classList.add('noai'); } }
+    return null;
+  } finally { aiCtl = null; aiSetBusy(false); }
+}
+function aiEvaluate() {
+  aiRun(`${COACH}\n\nGÖREV: Aşağıdaki haftalık programa bakarak en fazla 220 kelimelik bir soyunma odası konuşması yap. Önce haftanın gerçek tablosunu sayılarla söyle, sonra en zayıf halkayı açıkça adlandır, sonra gelecek hafta için iki somut değişiklik öner. Boş günleri ve plan ile yapılan arasındaki farkı dikkate al.\n\nPROGRAM:\n${weekDigest(curWk)}`);
+}
+async function aiPlan() {
+  const ids = S.meta.subjects.map(s => s.id); const n = S.meta.slots.length;
+  const prompt = `${COACH}\n\nGÖREV: Aşağıdaki haftalık programda BOŞ olan ders hücreleri için plan öner. Program bir ders saati çizelgesi: her gün ${n} ders saati var, saatleri aşağıda yazıyor. Dolu hücrelere öneri yapma. En fazla 20 öneri ver. Haftalık hedeflere, sınav tarihlerine ve öğrencinin kısıtlarına uy; zayıf kalan dersleri öne al, dinlenme gününü de düşün. Gün numarası 0=Pazartesi ... 6=Pazar. Saat numarası 1 ile ${n} arasında. Ders kimliği olarak YALNIZCA şunları kullan: ${ids.join(', ')}.\n\nYalnızca şu biçimde tek bir JSON nesnesi döndür:\n{"ozet":"bir iki cümlelik gerekçe","oneriler":[{"gun":0,"saat":1,"dersler":["${ids[0] || 'mat'}"],"konu":"kısa konu"}]}\n\nPROGRAM:\n${weekDigest(curWk)}`;
+  const r = await aiRun(prompt, true);
+  if (!r) return;
+  const w = S.weeks[curWk] || blankWeek(); const list = [];
+  for (const o of (Array.isArray(r.oneriler) ? r.oneriler : [])) {
+    const d = +o.gun, i = (+o.saat) - 1;
+    if (!(d >= 0 && d <= 6) || !(i >= 0 && i < n)) continue;
+    if (!isEmptyCell(getCell(w, d, i)) || list.some(x => x.d === d && x.i === i)) continue;
+    const v = { subs: (Array.isArray(o.dersler) ? o.dersler : []).filter(x => ids.includes(x)).slice(0, 3), text: String(o.konu || '').slice(0, 300), done: false };
+    if (isEmptyCell(v)) continue;
+    list.push({ d, i, v, desc: `${v.subs.map(x => upTR(subById(x).code)).join(', ')}${v.text ? ' · ' + v.text : ''}` });
+  }
+  $('#aiOut').textContent = String(r.ozet || '').trim() || 'Öneriler hazır.';
+  if (!list.length) { $('#aiSug').innerHTML = `<p class="hint">Boş hücre için uygun öneri çıkmadı.</p>`; return; }
+  $('#aiSug').innerHTML = `<div class="lbl" style="margin-top:14px">Öneriler <small>istemediklerinin işaretini kaldır</small></div>` +
+    list.map((x, k) => { const sl = S.meta.slots[x.i]; return `<div class="sug"><button type="button" class="tick" data-sg="${k}" aria-pressed="true" aria-label="Öneriyi ekle">${ic('check')}</button><div><b>${DAYS[x.d]} · ${x.i + 1}. ders ${esc(sl.s)}–${esc(sl.e)}</b><div>${esc(x.desc)}</div></div></div>`; }).join('') +
+    `<div class="addrow"><button type="button" class="btn gold" id="aiApply">${ic('check')}Seçilenleri programa ekle</button></div>`;
+  $('#aiSug').onclick = e => {
+    const t = e.target.closest('[data-sg]'); if (t) { t.setAttribute('aria-pressed', String(t.getAttribute('aria-pressed') !== 'true')); return; }
+    if (e.target.closest('#aiApply')) {
+      const ww = getWeek(curWk, true); let c = 0;
+      $$('#aiSug [data-sg]').forEach(b => { if (b.getAttribute('aria-pressed') !== 'true') return; const x = list[+b.dataset.sg]; if (isEmptyCell(getCell(ww, x.d, x.i))) { putCell(ww, x.d, x.i, x.v); c++; } });
+      if (c) touch(curWk); renderBoard(); renderScore();
+      $('#aiSug').innerHTML = `<p class="hint">${c} öneri programa eklendi. Dolu hücrelere dokunulmadı.</p>`; toast(`${c} öneri tahtaya eklendi.`);
+    }
+  };
+}
+function aiAsk(q) {
+  aiRun(`${COACH}\n\nÖğrencinin sorusu: ${q}\n\nSoruyu öğrencinin bu haftaki programını bilerek, en fazla 180 kelimeyle yanıtla.\n\nPROGRAM:\n${weekDigest(curWk)}`);
+}
+function wireCoach() {
+  $('#coTitle').innerHTML = `${ic('tactic')}TEKNİK DİREKTÖR`;
+  $('#aiEval').innerHTML = `${ic('megaphone')}<span>Haftamı değerlendir<small>Sayılarla, dolandırmadan</small></span>`;
+  $('#aiPlan').innerHTML = `${ic('sparkle')}<span>Boş hücrelere plan öner<small>Yalnızca boşları doldurur, sen onaylarsın</small></span>`;
+  $('#aiAskBtn').innerHTML = `${ic('send')}<span class="lbl-t">Sor</span>`; $('#aiAskBtn').setAttribute('aria-label', 'Sor');
+  $('#aiEval').addEventListener('click', aiEvaluate);
+  $('#aiPlan').addEventListener('click', aiPlan);
+  $('#aiStop').addEventListener('click', aiAbort);
+  $('#aiAskForm').addEventListener('submit', e => { e.preventDefault(); const q = $('#aiAsk').value.trim(); if (!q) return; aiAsk(q); });
+}
+
+/* ================= Kadro ================= */
+function renderSquad() {
+  $('#sqTitle').innerHTML = `${ic('shirt')}KADRO · DERSLER`;
+  $('#sqAdd').innerHTML = `${ic('plus')}Ders ekle`;
+  $('#sqList').innerHTML = S.meta.subjects.map((s, i) => `<div class="subrow" data-i="${i}">
+      <button type="button" class="sw" style="--c:${esc(s.color)}" data-sq="sw" aria-label="${esc(s.name)} rengini değiştir" aria-expanded="false"></button>
+      <input type="text" value="${esc(s.name)}" data-sq="name" aria-label="Ders adı" placeholder="Ders adı">
+      <input type="text" value="${esc(s.code)}" data-sq="code" aria-label="Kısa kod" maxlength="4" placeholder="KOD">
+      <button type="button" class="ed-del" data-sq="del" aria-label="${esc(s.name)} dersini sil">${ic('trash')}</button>
+      <div class="pal" hidden>${PALETTE.map(c => `<button type="button" style="--c:${c}" data-col="${c}" aria-label="Renk ${c}"></button>`).join('')}</div></div>`).join('');
+}
+function wireSquad() {
+  const L = $('#sqList');
+  L.addEventListener('input', e => {
+    const t = e.target, row = t.closest('.subrow'); if (!row) return; const s = S.meta.subjects[+row.dataset.i];
+    if (t.dataset.sq === 'name') s.name = t.value; if (t.dataset.sq === 'code') s.code = t.value.slice(0, 4);
+    touch('meta'); renderBoardSoon();
+  });
+  L.addEventListener('click', async e => {
+    const row = e.target.closest('.subrow'); if (!row) return; const i = +row.dataset.i;
+    const sw = e.target.closest('[data-sq="sw"]'); if (sw) { const p = row.querySelector('.pal'); p.hidden = !p.hidden; sw.setAttribute('aria-expanded', String(!p.hidden)); return; }
+    const col = e.target.closest('[data-col]'); if (col) { S.meta.subjects[i].color = col.dataset.col; touch('meta'); renderSquad(); renderBoard(); return; }
+    if (e.target.closest('[data-sq="del"]')) {
+      const s = S.meta.subjects[i];
+      if (await askConfirm('Ders silinsin mi?', `${s.name} kadrodan çıkar. Tahtadaki eski kayıtlarda bu dersin etiketi görünmez olur.`, 'Sil')) { S.meta.subjects.splice(i, 1); touch('meta'); renderSquad(); renderBoard(); }
+    }
+  });
+  $('#sqAdd').addEventListener('click', () => {
+    const used = new Set(S.meta.subjects.map(s => s.color));
+    S.meta.subjects.push({ id: 's' + rid(), name: 'Yeni ders', code: 'YENİ', color: PALETTE.find(c => !used.has(c)) || PALETTE[0] });
+    touch('meta'); renderSquad(); const ins = $$('#sqList [data-sq="name"]'); const last = ins[ins.length - 1]; if (last) { last.focus(); last.select(); }
+  });
+}
+const renderBoardSoon = debounce(() => { renderBoard(); }, 250);
+
+/* ================= Ayarlar ================= */
+function renderSettings() {
+  const m = S.meta;
+  $('#stTitle').innerHTML = `${ic('gear')}AYARLAR`;
+  const seg = (key, opts) => `<div class="seg" data-set="${key}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${String(m[key]) === String(v)}">${l}</button>`).join('')}</div>`;
+  $('#stBody').innerHTML = `
+    <div class="set-sec"><h3>Görünüm</h3>
+      <label class="lbl" for="stClub">Kulüp adı <small>başlıkta, armada ve şeritte görünür</small></label><input type="text" id="stClub" value="${esc(m.club)}" maxlength="22">
+      <div class="set-row"><span>Yazı boyutu</span>${seg('fs', [[0.9, 'Küçük'], [1, 'Normal'], [1.15, 'Büyük'], [1.3, 'Çok büyük']])}</div>
+      <div class="set-row"><span>Tahta</span>${seg('board', [['day', 'Gündüz'], ['night', 'Gece']])}</div>
+      <div class="set-row"><span>Hareketli arka plan</span>${seg('motion', [[true, 'Açık'], [false, 'Kapalı']])}</div>
+      ${prefersReduce.matches ? `<p class="hint">Cihazında "hareketi azalt" açık olduğu için animasyonlar kapalı tutuluyor.</p>` : ''}
+    </div>
+    <div class="set-sec" id="stSlots"><h3>Ders saatleri</h3>
+      <p class="hint" style="margin-top:0">Her saati tahtanın sol sütununda tek tek değiştirebilirsin. Burada hepsini bir kerede dizersin; derslerin yerinde kalır.</p>
+      <div class="tset" style="margin-top:6px">
+        <div><label class="lbl" for="sgStart">İlk ders</label><input type="time" id="sgStart" value="${esc(m.slotGen.start)}"></div>
+        <div><label class="lbl" for="sgLen">Ders süresi (dk)</label><input type="text" inputmode="numeric" id="sgLen" value="${esc(m.slotGen.len)}"></div>
+        <div><label class="lbl" for="sgBrk">Teneffüs (dk)</label><input type="text" inputmode="numeric" id="sgBrk" value="${esc(m.slotGen.brk)}"></div>
+        <div><label class="lbl" for="sgN">Ders sayısı (1–12)</label><input type="text" inputmode="numeric" id="sgN" value="${esc(m.slots.length)}"></div>
+      </div>
+      <div class="addrow"><button type="button" class="btn sm gold" id="sgApply">${ic('clock')}Saatleri bu düzene göre diz</button></div></div>
+    <div class="set-sec"><h3>Maç Saati</h3>
+      <div class="set-row"><span>Düdük sesi</span>${seg('sound', [[true, 'Açık'], [false, 'Kapalı']])}</div>
+      <div class="set-row"><span>Ses tipi</span><span style="display:flex;gap:8px;flex-wrap:wrap">${seg('tone', [['whistle', 'Hakem düdüğü'], ['gong', 'Pes gong']])}<button type="button" class="btn sm" id="stTry">${ic('play')}Dene</button></span></div>
+      <p class="hint">Telefon ve tablet destekliyorsa devre geçişlerinde titreşim de verilir; ekran devre boyunca açık tutulur.</p>
+    </div>
+    <div class="set-sec"><h3>Geri sayımlar</h3><div id="stCds">${m.countdowns.map((c, i) => `<div class="cdrow" data-i="${i}"><input type="text" value="${esc(c.name)}" data-cd="name" aria-label="Sınav adı" placeholder="Sınav adı"><input type="date" value="${esc(c.date)}" data-cd="date" aria-label="Tarih"><button type="button" class="ed-del" data-cd="del" aria-label="${esc(c.name)} geri sayımını sil">${ic('trash')}</button></div>`).join('')}</div>
+      <div class="addrow"><button type="button" class="btn sm" id="stAddCd">${ic('calendar')}Geri sayım ekle</button></div>
+      <p class="hint">TYT 19 Haziran 2027, AYT 20 Haziran 2027 olarak hazır geldi. Mock sınavlarını da ekleyebilirsin.</p></div>
+    <div class="set-sec"><h3>Teknik direktöre notların</h3>
+      <label class="sr" for="stCons">Kısıtlar</label><textarea id="stCons" rows="3" placeholder="Örn: Hafta içi 03:40–07:00 arası çalışırım. Salı kulüp var, eve geç dönerim. Evde değil okulda daha verimliyim.">${esc(m.constraints)}</textarea>
+      <p class="hint">Plan önerirken buna uyar.</p></div>
+    <div class="set-sec"><h3>Kendi sözlerin</h3>
+      <label class="sr" for="stQuotes">Kendi motivasyon sözlerin</label><textarea id="stQuotes" rows="3" placeholder="Her satıra bir söz. Söz kartında hazır sözlerin önünde döner.">${esc(m.quotes)}</textarea></div>
+    <div class="set-sec"><h3>Veri</h3>
+      <p class="hint" style="margin-top:0">${cloud.coll ? 'Programın bulutta: bu sayfayı tabletten, telefondan ya da bilgisayardan açtığında aynı tahtayı görürsün. Sayfayı biriyle paylaşırsan onun programı ayrı tutulur, seninkini göremez.' : 'Programın şu an bu tarayıcıda saklanıyor. Güvence için arada bir yedek indir.'}</p>
+      <div class="addrow" style="flex-wrap:wrap"><button type="button" class="btn sm" id="stExport">${ic('download')}Yedeği indir</button><button type="button" class="btn sm" id="stImport">${ic('upload')}Yedek yükle</button><button type="button" class="btn sm red" id="stReset">${ic('trash')}Her şeyi sıfırla</button></div></div>`;
+}
+function wireSettings() {
+  const B = $('#stBody');
+  B.addEventListener('click', async e => {
+    const sb = e.target.closest('.seg[data-set] button');
+    if (sb) {
+      const key = sb.parentElement.dataset.set; let v = sb.dataset.v;
+      if (key === 'fs') v = +v; else if (v === 'true' || v === 'false') v = v === 'true';
+      S.meta[key] = v; touch('meta'); applyPrefs();
+      $$('button', sb.parentElement).forEach(x => x.setAttribute('aria-pressed', String(x === sb)));
+      if (key === 'fs') requestAnimationFrame(fitTitle);
+      return;
+    }
+    if (e.target.closest('#stTry')) { const was = S.meta.sound; S.meta.sound = true; playSignal(1); S.meta.sound = was; return; }
+    if (e.target.closest('#stAddCd')) { S.meta.countdowns.push({ id: rid(), name: '', date: '' }); touch('meta'); renderSettings(); const ins = $$('#stCds [data-cd="name"]'); ins[ins.length - 1].focus(); return; }
+    const del = e.target.closest('[data-cd="del"]'); if (del) { S.meta.countdowns.splice(+del.closest('.cdrow').dataset.i, 1); touch('meta'); renderSettings(); renderStrip(); return; }
+    if (e.target.closest('#sgApply')) {
+      const start = $('#sgStart').value || '08:00'; const len = Math.max(5, Math.min(240, parseInt($('#sgLen').value, 10) || 40));
+      const brk = Math.max(0, Math.min(120, parseInt($('#sgBrk').value, 10) || 0)); const n = Math.max(1, Math.min(MAX_SLOTS, parseInt($('#sgN').value, 10) || 9));
+      S.meta.slotGen = { start, len, brk, n }; S.meta.slots = makeSlots(start, len, brk, n); touch('meta'); renderBoard(); renderScore(); renderSettings();
+      toast(`${n} ders saati ${S.meta.slots[0].s} ile ${S.meta.slots[n - 1].e} arasına dizildi.`); return;
+    }
+    if (e.target.closest('#stExport')) { exportJSON(); return; }
+    if (e.target.closest('#stImport')) { $('#importFile').click(); return; }
+    if (e.target.closest('#stReset')) {
+      if (!(await askConfirm('Her şey sıfırlansın mı?', 'Bütün haftalar, notlar, dersler ve ayarlar silinir. Bu geri alınamaz. Önce yedek indirmen iyi olur.', 'Sıfırla'))) return;
+      const keys = Object.keys(S.weeks); for (const k of keys) await removeWeek(k);
+      S.meta = defaultMeta(); touch('meta'); applyPrefs(); renderAll(); renderSettings(); toast('Program sıfırlandı.');
+    }
+  });
+  B.addEventListener('input', e => {
+    const t = e.target;
+    if (t.id === 'stClub') { S.meta.club = t.value || 'Şimşek FC'; touch('meta'); renderHeader(); renderQuote(); }
+    else if (t.id === 'stCons') { S.meta.constraints = t.value; touch('meta'); }
+    else if (t.id === 'stQuotes') { S.meta.quotes = t.value; touch('meta'); }
+    else if (t.dataset.cd) { const c = S.meta.countdowns[+t.closest('.cdrow').dataset.i]; c[t.dataset.cd] = t.value; touch('meta'); renderStrip(); }
+  });
+}
+
+/* ================= yedek, resim, menü ================= */
+let dlNS; const getDownloads = async () => { if (dlNS !== undefined) return dlNS; try { dlNS = (window.claude && window.claude.use) ? await window.claude.use('downloads') : null; } catch (e) { dlNS = null; } return dlNS; };
+async function saveFile(filename, data) {
+  const dl = await getDownloads();
+  if (!dl) {
+    if (window.claude) return false;
+    try {
+      const blob = data instanceof Blob ? data : new Blob([data], { type: filename.endsWith('.json') ? 'application/json' : 'application/octet-stream' });
+      const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000); return true;
+    } catch (e) { return false; }
+  }
+  try { await dl.save({ filename, data }); return true; } catch (e) { if (e && e.code === 'declined') return true; toast('Dosya kaydedilemedi.'); return true; }
+}
+async function exportJSON() {
+  const ok = await saveFile(`simsek-fc-yedek-${ymd(new Date())}.json`, JSON.stringify({ app: 'simsek-fc', v: 1, exported: new Date().toISOString(), meta: S.meta, weeks: S.weeks }, null, 2));
+  if (!ok) toast('Bu görünümde dosya indirilemiyor. Sayfayı Claude içinde açınca yedek alabilirsin.');
+}
+async function importJSON(file) {
+  try {
+    const o = JSON.parse(await file.text());
+    if (!o || !o.meta || typeof o.weeks !== 'object') throw new Error('biçim');
+    if (!(await askConfirm('Yedek yüklensin mi?', 'Şu anki program, yedekteki programla değiştirilecek.', 'Yükle'))) return;
+    for (const k of Object.keys(S.weeks)) if (!(k in o.weeks)) await removeWeek(k);
+    S.meta = mergeMeta(o.meta); touch('meta');
+    for (const k in o.weeks) if (/^w_\d{4}-\d{2}-\d{2}$/.test(k)) { S.weeks[k] = normWeek(o.weeks[k]); touch(k); }
+    applyPrefs(); renderAll(); toast('Yedek yüklendi.');
+  } catch (e) { toast('Bu dosya bir Şimşek FC yedeği değil.'); }
+}
+function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('yüklenemedi')); document.head.appendChild(s); }); }
+async function exportPNG() {
+  toast('Hafta görseli hazırlanıyor…');
+  try {
+    if (!window.html2canvas) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+    const app = $('#app'); app.classList.add('exporting');
+    const svgs = $$('#poster svg'); const prevStyle = svgs.map(el => el.getAttribute('style'));
+    svgs.forEach(el => { el.style.color = getComputedStyle(el).color; });
+    let canvas;
+    try { canvas = await window.html2canvas($('#poster'), { backgroundColor: '#020A2A', scale: Math.min(2, Math.max(1.5, window.devicePixelRatio || 1)), logging: false, useCORS: true }); }
+    finally { app.classList.remove('exporting'); svgs.forEach((el, i) => { if (prevStyle[i] == null) el.removeAttribute('style'); else el.setAttribute('style', prevStyle[i]); }); }
+    const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+    if (!blob) throw new Error('blob');
+    const ok = await saveFile(`simsek-fc-${curWk.slice(2)}.png`, blob);
+    if (!ok) { $('#imImg').src = URL.createObjectURL(blob); openOv('ov-img'); }
+  } catch (e) { $('#app').classList.remove('exporting'); toast('Görsel hazırlanamadı. Bir kez daha dene.'); }
+}
+function copyLastWeek() {
+  const prevKey = wkKey(addDays(wkMon(curWk), -7)); const pw = S.weeks[prevKey];
+  if (!pw || !weekHasContent(pw)) { toast('Geçen hafta boş; taşınacak bir şey yok.'); return; }
+  const w = getWeek(curWk, true); let n = 0, g = 0;
+  for (let d = 0; d < 7; d++) S.meta.slots.forEach((_, i) => {
+    const v = getCell(pw, d, i); if (isEmptyCell(v) || !isEmptyCell(getCell(w, d, i))) return;
+    putCell(w, d, i, freshCopy(v)); n++;
+  });
+  for (const x of pw.goals.filter(x => x.t.trim() && !x.done)) { const slot = w.goals.find(y => !y.t.trim()); if (!slot) break; slot.t = x.t; slot.done = false; g++; }
+  if (n || g) touch(curWk); renderAll();
+  toast(`${n} ders ve ${g} bitmemiş hedef bu haftaya taşındı. Dolu hücrelere dokunulmadı.`);
+}
+async function clearWeek() {
+  if (!weekHasContent(S.weeks[curWk])) { toast('Bu hafta zaten boş.'); return; }
+  if (!(await askConfirm('Bu hafta temizlensin mi?', 'Bu haftanın bütün hücreleri, hedefleri ve değerlendirmesi silinir.', 'Temizle'))) return;
+  await removeWeek(curWk); renderAll(); toast('Hafta temizlendi.');
+}
+function buildMenu() {
+  $('#moreBtn').innerHTML = ic('dots');
+  $('#moreMenu').innerHTML = `
+    <button type="button" role="menuitem" data-m="squad">${ic('shirt')}Kadro: dersleri düzenle</button>
+    <button type="button" role="menuitem" data-m="copy">${ic('copy')}Geçen haftayı bu haftaya taşı</button>
+    <button type="button" role="menuitem" data-m="png">${ic('image')}Haftayı görsel olarak kaydet</button>
+    <hr>
+    <button type="button" role="menuitem" data-m="export">${ic('download')}Yedeği indir</button>
+    <button type="button" role="menuitem" data-m="import">${ic('upload')}Yedek yükle</button>
+    <button type="button" role="menuitem" data-m="clear">${ic('eraser')}Bu haftayı temizle</button>
+    <hr>
+    <button type="button" role="menuitem" data-m="settings">${ic('gear')}Ayarlar</button>`;
+}
+function closeMenu() { $('#moreMenu').hidden = true; $('#moreBtn').setAttribute('aria-expanded', 'false'); }
+
+/* ================= bağlantılar ================= */
+function wire() {
+  $('#prevW').innerHTML = ic('chevL'); $('#nextW').innerHTML = ic('chevR');
+  $('#openTimer').innerHTML = `${ic('stopwatch')}<span class="lbl-t">Maç Saati</span>`; $('#openTimer').setAttribute('aria-label', 'Maç Saati');
+  $('#openReport').innerHTML = `${ic('chart')}<span class="lbl-t">Maç Raporu</span>`; $('#openReport').setAttribute('aria-label', 'Maç Raporu');
+  $('#openCoach').innerHTML = `${ic('tactic')}<span class="lbl-t">Teknik Direktör</span>`; $('#openCoach').setAttribute('aria-label', 'Teknik Direktör');
+  const shift = n => { curWk = wkKey(addDays(wkMon(curWk), 7 * n)); activeDay = todayIdx(curWk) >= 0 ? todayIdx(curWk) : 0; renderAll(); };
+  $('#prevW').addEventListener('click', () => shift(-1));
+  $('#nextW').addEventListener('click', () => shift(1));
+  $('#todayW').addEventListener('click', () => { curWk = wkKey(mondayOf(new Date())); activeDay = todayIdx(curWk); renderAll(); });
+  $('#openTimer').addEventListener('click', openTimer);
+  $('#openReport').addEventListener('click', () => { renderReport(); openOv('ov-report'); });
+  $('#scoreboard').addEventListener('click', () => { renderReport(); openOv('ov-report'); });
+  $('#openCoach').addEventListener('click', () => openOv('ov-coach'));
+  $('#boardMode').addEventListener('click', () => { S.meta.board = S.meta.board === 'night' ? 'day' : 'night'; touch('meta'); applyPrefs(); });
+  $('#cds').addEventListener('click', e => { if (e.target.closest('[data-cd]')) { renderSettings(); openOv('ov-set'); } });
+  $('#moreBtn').addEventListener('click', e => { e.stopPropagation(); const m = $('#moreMenu'); m.hidden = !m.hidden; $('#moreBtn').setAttribute('aria-expanded', String(!m.hidden)); if (!m.hidden) m.querySelector('button').focus(); });
+  document.addEventListener('click', e => { if (!e.target.closest('.menu-wrap')) closeMenu(); });
+  $('#moreMenu').addEventListener('click', e => {
+    const b = e.target.closest('[data-m]'); if (!b) return; closeMenu();
+    ({ squad: () => { renderSquad(); openOv('ov-squad'); }, copy: copyLastWeek, png: exportPNG, export: exportJSON, import: () => $('#importFile').click(), clear: clearWeek, settings: () => { renderSettings(); openOv('ov-set'); } })[b.dataset.m]();
+  });
+  $('#importFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) importJSON(f); });
+  for (const id of ['#grid', '#dayview']) { const el = $(id); el.addEventListener('click', onBoardClick); el.addEventListener('keydown', onBoardKey); el.addEventListener('input', onSlotInput); el.addEventListener('focusout', onSlotBlur); }
+  $('#slotPlus').addEventListener('click', addSlot);
+  $('#slotMinus').addEventListener('click', removeSlot);
+  $('#slotArrange').addEventListener('click', () => { renderSettings(); openOv('ov-set'); setTimeout(() => { const t = $('#stSlots'); if (t) t.scrollIntoView({ block: 'start' }); }, 60); });
+  $('#rpBody').addEventListener('click', e => { const b = e.target.closest('[data-dels]'); if (b) deleteSession(b.dataset.dels); });
+  // yan panel
+  $('#goals').addEventListener('input', e => { const i = e.target.dataset.goal; if (i == null) return; const w = getWeek(curWk, true); w.goals[+i].t = e.target.value; touch(curWk); renderGoalsProg(); });
+  $('#goals').addEventListener('click', e => {
+    const b = e.target.closest('[data-gtick]'); if (!b) return; const i = +b.dataset.gtick; const w = getWeek(curWk, true);
+    if (!w.goals[i].t.trim()) { toast('Önce hedefi yaz.'); $(`#goal-${i}`).focus(); return; }
+    const before = w.goals.filter(g => g.t.trim()).every(g => g.done);
+    w.goals[i].done = !w.goals[i].done; touch(curWk); renderSide();
+    if (w.goals[i].done) burstAt(b, 18);
+    const after = w.goals.filter(g => g.t.trim()).every(g => g.done);
+    if (after && !before && w.goals.filter(g => g.t.trim()).length >= 1) celebrate('GOOOL!');
+  });
+  $('#unutma').addEventListener('input', e => { const i = e.target.dataset.un; if (i == null) return; S.meta.unutma[+i] = e.target.value; touch('meta'); });
+  $('#stars').addEventListener('click', e => {
+    const b = e.target.closest('[data-star]'); if (!b) return; const w = getWeek(curWk, true); const v = +b.dataset.star;
+    w.stars = w.stars === v ? 0 : v; touch(curWk); renderSide(); if (w.stars === 5) celebrate('5 YILDIZ!'); else if (w.stars) burstAt(b, 10);
+  });
+  $('#review').addEventListener('input', e => { const w = getWeek(curWk, true); w.review = e.target.value; touch(curWk); });
+  $('#qPrev').addEventListener('click', () => { qIdx--; renderQuote(); });
+  $('#qNext').addEventListener('click', () => { qIdx++; renderQuote(); });
+  // notlar
+  for (const el of $$('[data-note]')) {
+    try { el.contentEditable = 'plaintext-only'; } catch (e) { el.contentEditable = 'true'; }
+    if (el.contentEditable !== 'plaintext-only') el.contentEditable = 'true';
+    el.spellcheck = false; el.setAttribute('role', 'textbox');
+    el.addEventListener('input', () => { S.meta.notes[el.dataset.note] = el.textContent.replace(/\s+\n/g, '\n').trim(); touch('meta'); });
+    el.addEventListener('keydown', e => { if (e.key === 'Enter' && el.hasAttribute('data-single')) { e.preventDefault(); el.blur(); } });
+    el.addEventListener('paste', e => { if (el.contentEditable === 'true') { e.preventDefault(); const t = (e.clipboardData || window.clipboardData).getData('text'); document.execCommand('insertText', false, t); } });
+  }
+  prefersReduce.addEventListener && prefersReduce.addEventListener('change', applyPrefs);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitTitle);
+}
+function renderGoalsProg() { const w = S.weeks[curWk] || blankWeek(); const set = w.goals.filter(g => g.t.trim()); $('#gprog').style.width = (set.length ? set.filter(g => g.done).length / set.length * 100 : 0) + '%'; }
+
+/* ================= başlat ================= */
+loadLocal();
+curWk = wkKey(mondayOf(new Date())); activeDay = (new Date().getDay() + 6) % 7;
+buildSide(); buildMenu(); wire(); wireEditor(); wireOverlays(); wireTimer(); wireCoach(); wireSquad(); wireSettings();
+fxInit(); applyPrefs(); restoreTimer(); renderAll(); renderTimer();
+let lastDay = ymd(new Date()), lastMin = -1;
+setInterval(() => {
+  const n = new Date();
+  if (TM.runStart && (TM.phase === 'play' || TM.phase === 'break') && tmElapsed() >= TM.len) tmPhaseDone();
+  if (TM.phase === 'play' || TM.phase === 'break' || !$('#ov-timer').hidden) renderTimer();
+  if (n.getMinutes() !== lastMin) {
+    lastMin = n.getMinutes(); renderClock();
+    const dk = ymd(n);
+    if (dk !== lastDay) { const wasCur = curWk === wkKey(mondayOf(addDays(n, -1))); lastDay = dk; if (wasCur) curWk = wkKey(mondayOf(n)); activeDay = (n.getDay() + 6) % 7; renderAll(); }
+    else if (todayIdx(curWk) >= 0 && !document.querySelector('.ov:not([hidden])') && !(document.activeElement && document.activeElement.closest && document.activeElement.closest('.board'))) renderBoard();
+  }
+}, 500);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && TM.runStart && (TM.phase === 'play' || TM.phase === 'break')) lockOn(); });
+initCloud(); initSample();
+})();
+</script>
+
+<script>
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+}
+</script>
+</body>
+</html>

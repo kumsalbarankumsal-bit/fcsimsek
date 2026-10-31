@@ -1,0 +1,17 @@
+{
+  "name": "Şimşek FC — Haftalık Ders Programı",
+  "short_name": "Şimşek FC",
+  "description": "Haftalık ders çalışma programı, Maç Saati ve maç raporu",
+  "lang": "tr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#020A2A",
+  "theme_color": "#020A2A",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
